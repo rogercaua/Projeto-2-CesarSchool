@@ -1,0 +1,285 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: "Segoe UI", Arial, sans-serif;
+    background: linear-gradient(135deg, #e8f5e9, #f4f6f8);
+}
+
+/* HEADER */
+header {
+    background: linear-gradient(135deg, #27ae60, #2ecc71);
+    color: white;
+    text-align: center;
+    padding: 15px 20px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+header h1 {
+    font-size: 2.5rem;
+}
+
+/* GRID */
+.container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    padding: 30px;
+    gap: 20px;
+}
+
+/* CARD */
+.card {
+    background: white;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+}
+
+/* DESTAQUE */
+.destaque {
+    border-left: 6px solid #2ecc71;
+}
+
+/* DASHBOARD */
+.dashboard h3 {
+    font-size: 2rem;
+    color: #27ae60;
+}
+
+/* FORM */
+input, select, button {
+    width: 100%;
+    margin-top: 12px;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 0.95rem;
+}
+
+input:focus, select:focus {
+    outline: none;
+    border-color: #2ecc71;
+}
+
+/* BOTÃO */
+button {
+    background: linear-gradient(135deg, #2ecc71, #27ae60);
+    color: white;
+    border: none;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+button:hover {
+    transform: scale(1.03);
+    opacity: 0.9;
+}
+
+/* LISTA */
+ul {
+    list-style: none;
+}
+
+li {
+    padding: 12px;
+    margin-top: 10px;
+    background: #f1f3f4;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* BOTÃO REMOVER */
+li button {
+    background: #e74c3c;
+    width: auto;
+    padding: 5px 10px;
+    font-size: 0.8rem;
+}
+
+li button:hover {
+    background: #c0392b;
+}
+
+/* RESULTADO */
+#resultado {
+    margin-top: 15px;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+/* SOBRE FULL WIDTH */
+.sobre-full {
+    width: 100%;
+    margin-top: 40px;
+}
+
+/* LINHAS */
+.sobre-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: 300px;
+}
+
+/* INVERTE (efeito xadrez) */
+.sobre-row.invertido {
+    direction: rtl;
+}
+
+.sobre-row.invertido .sobre-texto {
+    direction: ltr;
+}
+
+/* TEXTO */
+.sobre-texto {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 50px;
+    background: #ffffff;
+}
+
+.sobre-texto h2 {
+    margin-bottom: 15px;
+    color: #27ae60;
+}
+
+.sobre-texto p {
+    line-height: 1.6;
+    color: #2c3e50;
+}
+
+/* IMAGEM (placeholder bonito) */
+.sobre-img {
+    background: linear-gradient(135deg, #2ecc71, #27ae60);
+    opacity: 0.9;
+}
+
+/* RESPONSIVO */
+@media (max-width: 768px) {
+    .sobre-row {
+        grid-template-columns: 1fr;
+    }
+
+    .sobre-row.invertido {
+        direction: ltr;
+    }
+}
+
+/* FOOTER */
+.footer {
+    background: #1e272e;
+    color: #2ecc71;
+}
+
+/* CONTAINER */
+.footer-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 30px;
+    padding: 40px;
+}
+
+/* COLUNAS */
+.footer-col h3,
+.footer-col h4 {
+    color: #2ecc71;
+    margin-bottom: 10px;
+}
+
+.footer-col p {
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.footer-col ul {
+    list-style: none;
+}
+
+.footer-col ul li {
+    margin-top: 6px;
+    font-size: 0.9rem;
+}
+
+/* LINHA FINAL */
+.footer-bottom {
+    text-align: center;
+    padding: 15px;
+    border-top: 1px solid #485460;
+    font-size: 0.8rem;
+}
+
+/* HEADER MODERNO */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 40px;
+
+    background: linear-gradient(135deg, #27ae60, #2ecc71);
+    color: white;
+}
+
+/* LOGO */
+.logo {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+/* NAV */
+.nav a {
+    margin: 0 15px;
+    text-decoration: none;
+    color: white;
+    font-weight: 500;
+    transition: 0.2s;
+}
+
+.nav a:hover {
+    opacity: 0.8;
+}
+
+/* BOTÕES */
+.actions {
+    display: flex;
+    gap: 10px;
+}
+
+.actions button {
+    padding: 8px 15px;
+    border-radius: 20px;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+/* LOGIN */
+.btn-login {
+    background: white;
+    color: #27ae60;
+}
+
+/* CADASTRO */
+.btn-signup {
+    background: #145a32;
+    color: white;
+}
+
+.btn-signup:hover {
+    background: #0e3d22;
+}
+
+html {
+    scroll-behavior: smooth;
+}
