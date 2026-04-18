@@ -96,6 +96,37 @@ Objetivo:
 * Engajar o usuário com dados práticos
 
 ---
+### 7. 🏅 Sistema de Gamificação (Pontos e Selos)
+Transforma o uso contínuo da tag em uma jornada de recompensas positivas.
+
+Motor de regras que:
+
+Converte a quantidade de CO₂ evitado em "Pontos Sustentáveis".
+
+Desbloqueia conquistas/selos virtuais ao atingir marcos históricos (Ex: Selo "Iniciante Verde" ao evitar o primeiro 1kg de CO₂).
+
+Objetivo:
+
+Aumentar drasticamente a retenção e o engajamento do usuário com o aplicativo.
+
+---
+
+### 8. 🏆 Ranking de Sustentabilidade (Leaderboard)
+Fomenta a competição saudável através da gamificação social.
+
+Funcionalidade que:
+
+Utiliza o saldo de "Pontos Sustentáveis" para ranquear os usuários.
+
+Exibe os motoristas (ou frotas) com o maior impacto positivo no mês.
+
+Permite ao usuário visualizar sua posição em relação a toda a base de clientes.
+
+Objetivo:
+
+Incentivar o uso contínuo da tag para melhorar o posicionamento no ranking.
+
+___
 
 ## 🧠 Conceito Central
 
