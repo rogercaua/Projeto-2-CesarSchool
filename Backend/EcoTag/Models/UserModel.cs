@@ -1,9 +1,11 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization; 
 
 namespace EcoTag.Models
 {
     public class UserModel
     {
+        [JsonIgnore] 
         public int Id { get; set; }
 
         [Required(ErrorMessage = "Nome é obrigatório.")]
@@ -16,11 +18,13 @@ namespace EcoTag.Models
         public string Email { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Senha é obrigatória.")]
+        [JsonPropertyName("password")] 
         public string PasswordHash { get; set; } = string.Empty;
 
+        [JsonIgnore] 
         public string Role { get; set; } = "user";
 
-        public DateTime CreatedAt { get; set; }
-            = DateTime.UtcNow;
+        [JsonIgnore] 
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }
