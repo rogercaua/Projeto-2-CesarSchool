@@ -1,21 +1,20 @@
 using System.ComponentModel.DataAnnotations;
-using System.Text.Json.Serialization;
 
-namespace EcoTag.Models
+namespace EcoTag.Core.DTOs.Admin
 {
-    public class ParametrosCenarioSemTagModel
+    public class ParametrosCenarioSemTagRequestDTO
     {
-        [Key]
+        [Required]
         [MaxLength(30)]
         public string TipoLocal { get; set; } = string.Empty;
 
+        [Range(0, 240)]
         public int TempoMedioFilaMinutos { get; set; }
 
+        [Range(0, 3600)]
         public int TempoEsperaCabineSegundos { get; set; }
 
+        [Range(0, double.MaxValue)]
         public double EmissaoTicketPapelKg { get; set; }
-
-        [JsonIgnore]
-        public ICollection<LocalUsoModel> LocaisUso { get; set; } = new List<LocalUsoModel>();
     }
 }

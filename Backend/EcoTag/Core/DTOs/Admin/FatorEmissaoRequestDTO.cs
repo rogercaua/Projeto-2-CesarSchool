@@ -1,21 +1,20 @@
 using System.ComponentModel.DataAnnotations;
-using System.Text.Json.Serialization;
 
-namespace EcoTag.Models
+namespace EcoTag.Core.DTOs.Admin
 {
-    public class FatorEmissaoModel
+    public class FatorEmissaoRequestDTO
     {
-        [Key]
+        [Required]
         [MaxLength(30)]
         public string TipoCombustivel { get; set; } = string.Empty;
 
+        [Range(0.000001, double.MaxValue)]
         public double FatorEmissao { get; set; }
 
+        [Range(0, double.MaxValue)]
         public double ConsumoMarchaLenta { get; set; }
 
+        [Range(0, double.MaxValue)]
         public double ConsumoAdicionalAceleracao { get; set; }
-
-        [JsonIgnore]
-        public ICollection<VeiculoModel> Veiculos { get; set; } = new List<VeiculoModel>();
     }
 }

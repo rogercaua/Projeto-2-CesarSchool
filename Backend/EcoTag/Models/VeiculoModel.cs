@@ -3,20 +3,25 @@ using System.Text.Json.Serialization;
 
 namespace EcoTag.Models
 {
-    public class LocalUsoModel
+    public class VeiculoModel
     {
         public int Id { get; set; }
 
-        [Required]
-        [MaxLength(100)]
-        public string Nome { get; set; } = string.Empty;
+        public int UsuarioId { get; set; }
 
         [Required]
         [MaxLength(30)]
-        public string TipoLocal { get; set; } = string.Empty;
+        public string TipoVeiculo { get; set; } = string.Empty;
+
+        [Required]
+        [MaxLength(30)]
+        public string TipoCombustivel { get; set; } = string.Empty;
 
         [JsonIgnore]
-        public ParametrosCenarioSemTagModel? ParametrosCenario { get; set; }
+        public UserModel? Usuario { get; set; }
+
+        [JsonIgnore]
+        public FatorEmissaoModel? FatorEmissao { get; set; }
 
         [JsonIgnore]
         public ICollection<PassagemTagModel> Passagens { get; set; } = new List<PassagemTagModel>();
