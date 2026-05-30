@@ -1,0 +1,1268 @@
+DOCUMENTACAO DO BACKEND - ECOTAG API
+====================================
+
+Projeto: EcoTag
+Tipo: API RESTful ASP.NET Core em C#
+Framework: .NET 10
+Banco de dados: PostgreSQL via Entity Framework Core
+Documentacao interativa: Swagger
+URL padrao da API em desenvolvimento: http://localhost:5295
+URL do Swagger: http://localhost:5295/swagger
+
+
+1. VISAO GERAL
+==============
+
+O backend EcoTag permite cadastrar usuarios, autenticar via JWT, gerenciar veiculos, registrar passagens de tag, calcular CO2e evitado, consultar dashboard de impacto, simular cenarios sustentaveis, consultar gamificacao e visualizar ranking.
+
+A ideia principal do sistema e comparar dois cenarios:
+
+- Sem tag: veiculo para, espera em fila/cabine, consome combustivel parado/acelerando e pode gerar ticket em papel.
+- Com tag: passagem continua, sem parada.
+
+Cada passagem registrada gera automaticamente um valor de CO2e evitado em kg.
+
+
+2. AUTENTICACAO E AUTORIZACAO
+=============================
+
+O sistema usa JWT Bearer Token.
+
+Fluxo:
+
+1. Cadastrar usuario:
+   POST /api/auth/register
+
+2. Fazer login:
+   POST /api/auth/login
+
+3. Copiar o token retornado.
+
+4. Enviar nas rotas protegidas usando o header:
+   Authorization: Bearer SEU_TOKEN
+
+No Swagger:
+
+1. Clique em "Authorize".
+2. Cole o token JWT.
+3. Confirme.
+4. Teste as rotas protegidas.
+
+Regras de permissao:
+
+- Rotas publicas:
+  - POST /api/auth/register
+  - POST /api/auth/login
+
+- Rotas de usuario autenticado:
+  - Perfil
+  - Veiculos
+  - Passagens
+  - Dashboard
+  - Simulador
+  - Gamificacao
+  - Ranking
+
+- Rotas de admin:
+  - /api/admin/fatores-emissao
+  - /api/admin/parametros-cenario
+  - /api/admin/locais-uso
+
+Observacao importante:
+O cadastro comum cria usuarios com role "user".
+Para testar rotas admin, promova um usuario diretamente no banco:
+
+UPDATE "Users" SET "Role" = 'admin' WHERE "Email" = 'email@teste.com';
+
+Depois faca login novamente para gerar um token com a role atualizada.
+
+
+3. PADRAO DE RESPOSTAS
+======================
+
+Codigos HTTP usados pela API:
+
+200 OK
+Usado em consultas, login, atualizacoes e simulacoes bem sucedidas.
+
+201 Created
+Usado quando um recurso e criado.
+
+204 No Content
+Usado quando um recurso e excluido com sucesso.
+
+400 Bad Request
+Usado quando a request tem dados invalidos, regra de negocio violada ou valor fora do permitido.
+
+401 Unauthorized
+Usado quando a rota exige token e o token nao foi enviado, esta invalido ou expirou.
+
+403 Forbidden
+Usado quando o usuario esta autenticado, mas nao tem permissao de admin.
+
+404 Not Found
+Usado quando o recurso solicitado nao existe ou nao pertence ao usuario autenticado.
+
+Formato comum de erro:
+
+{
+  "message": "Descricao do erro."
+}
+
+
+4. TIPOS NORMALIZADOS ACEITOS
+=============================
+
+Tipos de veiculo:
+
+- carro
+- moto
+- caminhao
+
+Tipos de combustivel:
+
+- gasolina
+- etanol
+- diesel
+
+Tipos de local:
+
+- pedagio
+- estacionamento
+
+O backend normaliza texto removendo diferencas de maiusculas/minusculas e acentos quando aplicavel.
+
+
+5. FORMULA DE CALCULO DE CO2e EVITADO
+=====================================
+
+Ao registrar uma passagem, o sistema calcula automaticamente o CO2e evitado.
+
+Formula:
+
+tempoParadoHoras =
+((tempoMedioFilaMinutos * 60) + tempoEsperaCabineSegundos) / 3600
+
+litrosEvitados =
+(consumoMarchaLenta * tempoParadoHoras) + consumoAdicionalAceleracao
+
+co2EvitadoKg =
+(litrosEvitados * fatorEmissao) + emissaoTicketPapelKg
+
+O resultado e arredondado para 6 casas decimais.
+
+Campos envolvidos:
+
+- tempoMedioFilaMinutos: parametro por tipo de local.
+- tempoEsperaCabineSegundos: parametro por tipo de local.
+- emissaoTicketPapelKg: parametro por tipo de local.
+- consumoMarchaLenta: fator por combustivel.
+- consumoAdicionalAceleracao: fator por combustivel.
+- fatorEmissao: multiplicador de emissao por combustivel.
+
+
+6. ROTAS DE AUTENTICACAO
+========================
+
+6.1 POST /api/auth/register
+---------------------------
+
+O que faz:
+Cadastra um novo usuario comum.
+
+Autenticacao:
+Nao precisa de token.
+
+Request body:
+
+{
+  "nome": "Roger",
+  "email": "roger@email.com",
+  "password": "123456"
+}
+
+Campos:
+
+- nome: obrigatorio, maximo 100 caracteres.
+- email: obrigatorio, formato de email, maximo 150 caracteres.
+- password: obrigatorio, minimo 6 caracteres.
+
+Regras:
+
+- O email e salvo em minusculo.
+- A senha nao e salva em texto puro; e salva como hash BCrypt.
+- A role inicial sempre e "user".
+- Se o email ja existir, retorna erro.
+
+Response 201:
+
+{
+  "id": 1,
+  "nome": "Roger",
+  "email": "roger@email.com",
+  "role": "user",
+  "createdAt": "2026-05-30T12:00:00Z"
+}
+
+Possiveis retornos:
+
+- 201: usuario criado.
+- 400: dados invalidos ou email ja cadastrado.
+
+
+6.2 POST /api/auth/login
+------------------------
+
+O que faz:
+Autentica o usuario e retorna um token JWT.
+
+Autenticacao:
+Nao precisa de token.
+
+Request body:
+
+{
+  "email": "roger@email.com",
+  "password": "123456"
+}
+
+Campos:
+
+- email: obrigatorio, formato de email.
+- password: obrigatorio.
+
+Response 200:
+
+{
+  "token": "TOKEN_JWT_AQUI",
+  "user": {
+    "id": 1,
+    "nome": "Roger",
+    "email": "roger@email.com",
+    "role": "user",
+    "createdAt": "2026-05-30T12:00:00Z"
+  }
+}
+
+Possiveis retornos:
+
+- 200: login realizado.
+- 401: email ou senha invalidos.
+
+
+7. ROTAS DE PERFIL
+==================
+
+7.1 GET /api/users/me
+---------------------
+
+O que faz:
+Retorna os dados do usuario autenticado.
+
+Autenticacao:
+Precisa de token JWT.
+
+Request:
+Nao possui body.
+
+Response 200:
+
+{
+  "id": 1,
+  "nome": "Roger",
+  "email": "roger@email.com",
+  "role": "user",
+  "createdAt": "2026-05-30T12:00:00Z"
+}
+
+Possiveis retornos:
+
+- 200: perfil encontrado.
+- 401: token ausente ou invalido.
+- 404: usuario nao encontrado.
+
+
+7.2 PUT /api/users/me
+---------------------
+
+O que faz:
+Atualiza nome e email do usuario autenticado.
+
+Autenticacao:
+Precisa de token JWT.
+
+Request body:
+
+{
+  "nome": "Roger Atualizado",
+  "email": "roger.novo@email.com"
+}
+
+Campos:
+
+- nome: obrigatorio, maximo 100 caracteres.
+- email: obrigatorio, formato de email, maximo 150 caracteres.
+
+Regras:
+
+- O email e salvo em minusculo.
+- Nao permite usar email ja cadastrado por outro usuario.
+
+Response 200:
+
+{
+  "id": 1,
+  "nome": "Roger Atualizado",
+  "email": "roger.novo@email.com",
+  "role": "user",
+  "createdAt": "2026-05-30T12:00:00Z"
+}
+
+Possiveis retornos:
+
+- 200: perfil atualizado.
+- 400: dados invalidos ou email ja usado por outro usuario.
+- 401: token ausente ou invalido.
+- 404: usuario nao encontrado.
+
+
+8. ROTAS DE VEICULOS
+====================
+
+8.1 GET /api/veiculos
+---------------------
+
+O que faz:
+Lista todos os veiculos cadastrados pelo usuario autenticado.
+
+Autenticacao:
+Precisa de token JWT.
+
+Request:
+Nao possui body.
+
+Response 200:
+
+[
+  {
+    "id": 1,
+    "usuarioId": 1,
+    "tipoVeiculo": "carro",
+    "tipoCombustivel": "gasolina"
+  }
+]
+
+Possiveis retornos:
+
+- 200: lista de veiculos do usuario.
+- 401: token ausente ou invalido.
+
+
+8.2 POST /api/veiculos
+----------------------
+
+O que faz:
+Cadastra um veiculo para o usuario autenticado.
+
+Autenticacao:
+Precisa de token JWT.
+
+Request body:
+
+{
+  "tipoVeiculo": "carro",
+  "tipoCombustivel": "gasolina"
+}
+
+Campos:
+
+- tipoVeiculo: obrigatorio. Aceita carro, moto ou caminhao.
+- tipoCombustivel: obrigatorio. Aceita gasolina, etanol ou diesel.
+
+Regras:
+
+- O veiculo sempre e vinculado ao usuario do token.
+- O combustivel precisa ter fator de emissao cadastrado.
+- O usuario nao informa usuarioId no body.
+
+Response 201:
+
+{
+  "id": 1,
+  "usuarioId": 1,
+  "tipoVeiculo": "carro",
+  "tipoCombustivel": "gasolina"
+}
+
+Possiveis retornos:
+
+- 201: veiculo criado.
+- 400: tipo de veiculo invalido, combustivel invalido ou fator inexistente.
+- 401: token ausente ou invalido.
+
+
+8.3 PUT /api/veiculos/{id}
+--------------------------
+
+O que faz:
+Atualiza um veiculo do usuario autenticado.
+
+Autenticacao:
+Precisa de token JWT.
+
+Parametro de rota:
+
+- id: id do veiculo.
+
+Request body:
+
+{
+  "tipoVeiculo": "moto",
+  "tipoCombustivel": "etanol"
+}
+
+Regras:
+
+- So permite atualizar veiculo do proprio usuario.
+- Se o id existir para outro usuario, a API retorna 404.
+- O combustivel precisa ter fator de emissao cadastrado.
+
+Response 200:
+
+{
+  "id": 1,
+  "usuarioId": 1,
+  "tipoVeiculo": "moto",
+  "tipoCombustivel": "etanol"
+}
+
+Possiveis retornos:
+
+- 200: veiculo atualizado.
+- 400: dados invalidos.
+- 401: token ausente ou invalido.
+- 404: veiculo nao encontrado para este usuario.
+
+
+8.4 DELETE /api/veiculos/{id}
+-----------------------------
+
+O que faz:
+Exclui um veiculo do usuario autenticado.
+
+Autenticacao:
+Precisa de token JWT.
+
+Parametro de rota:
+
+- id: id do veiculo.
+
+Request:
+Nao possui body.
+
+Regras:
+
+- So exclui veiculo do proprio usuario.
+- Se o id pertencer a outro usuario, retorna 404.
+
+Possiveis retornos:
+
+- 204: veiculo excluido.
+- 401: token ausente ou invalido.
+- 404: veiculo nao encontrado para este usuario.
+
+
+9. ROTAS DE PASSAGENS
+=====================
+
+9.1 GET /api/passagens
+----------------------
+
+O que faz:
+Lista o historico de passagens do usuario autenticado.
+
+Autenticacao:
+Precisa de token JWT.
+
+Request:
+Nao possui body.
+
+Response 200:
+
+[
+  {
+    "id": 1,
+    "veiculoId": 1,
+    "tipoVeiculo": "carro",
+    "tipoCombustivel": "gasolina",
+    "localUsoId": 1,
+    "localNome": "Pedagio Demo",
+    "tipoLocal": "pedagio",
+    "dataHora": "2026-05-30T12:00:00Z",
+    "co2EvitadoKg": 0.150917
+  }
+]
+
+Possiveis retornos:
+
+- 200: historico de passagens.
+- 401: token ausente ou invalido.
+
+
+9.2 POST /api/passagens
+-----------------------
+
+O que faz:
+Registra uma passagem de tag e calcula automaticamente o CO2e evitado.
+
+Autenticacao:
+Precisa de token JWT.
+
+Request body:
+
+{
+  "veiculoId": 1,
+  "localUsoId": 1,
+  "dataHora": "2026-05-30T12:00:00Z"
+}
+
+Campos:
+
+- veiculoId: obrigatorio, inteiro maior que 0.
+- localUsoId: obrigatorio, inteiro maior que 0.
+- dataHora: opcional. Se nao enviado, usa a data/hora atual em UTC.
+
+Regras:
+
+- O veiculo precisa pertencer ao usuario autenticado.
+- O local precisa existir.
+- O CO2e evitado e calculado pelo backend, nao enviado pelo cliente.
+- Usa o tipo de combustivel do veiculo e o tipo de local do local de uso.
+
+Response 201:
+
+{
+  "id": 1,
+  "veiculoId": 1,
+  "tipoVeiculo": "carro",
+  "tipoCombustivel": "gasolina",
+  "localUsoId": 1,
+  "localNome": "Pedagio Demo",
+  "tipoLocal": "pedagio",
+  "dataHora": "2026-05-30T12:00:00Z",
+  "co2EvitadoKg": 0.150917
+}
+
+Possiveis retornos:
+
+- 201: passagem criada.
+- 400: fator ou parametro ambiental ausente/invalido.
+- 401: token ausente ou invalido.
+- 404: veiculo do usuario ou local de uso nao encontrado.
+
+
+10. ROTAS DE DASHBOARD
+======================
+
+10.1 GET /api/dashboard/impacto
+-------------------------------
+
+O que faz:
+Retorna os indicadores de impacto ambiental do usuario autenticado.
+
+Autenticacao:
+Precisa de token JWT.
+
+Request:
+Nao possui body.
+
+Response 200:
+
+{
+  "mesAtualKg": 0.301834,
+  "anoAtualKg": 1.205000,
+  "totalHistoricoKg": 2.500000,
+  "totalPassagens": 20,
+  "pontosSustentaveis": 250
+}
+
+Campos de response:
+
+- mesAtualKg: total de CO2e evitado no mes atual.
+- anoAtualKg: total de CO2e evitado no ano atual.
+- totalHistoricoKg: total de CO2e evitado em todo o historico.
+- totalPassagens: quantidade total de passagens do usuario.
+- pontosSustentaveis: floor(totalHistoricoKg * 100).
+
+Possiveis retornos:
+
+- 200: dashboard calculado.
+- 401: token ausente ou invalido.
+
+
+11. ROTAS DE SIMULADOR
+======================
+
+11.1 POST /api/simulador
+------------------------
+
+O que faz:
+Simula CO2e evitado sem salvar historico.
+
+Autenticacao:
+Precisa de token JWT.
+
+Request body:
+
+{
+  "veiculoId": 1,
+  "localUsoId": 1,
+  "dias": 30,
+  "passagensPorDia": 10
+}
+
+Campos:
+
+- veiculoId: obrigatorio, inteiro maior que 0.
+- localUsoId: obrigatorio, inteiro maior que 0.
+- dias: obrigatorio, entre 1 e 365.
+- passagensPorDia: obrigatorio, entre 1 e 1000.
+
+Regras:
+
+- O veiculo precisa pertencer ao usuario autenticado.
+- O local precisa existir.
+- A simulacao nao cria registros em PassagensTag.
+- Total de passagens simulado = dias * passagensPorDia.
+
+Response 200:
+
+{
+  "dias": 30,
+  "passagensPorDia": 10,
+  "totalPassagens": 300,
+  "co2EvitadoPorPassagemKg": 0.150917,
+  "co2EvitadoTotalKg": 45.275100,
+  "co2EmitidoAMaisSemTagKg": 45.275100
+}
+
+Possiveis retornos:
+
+- 200: simulacao calculada.
+- 400: premissas ambientais ausentes ou dados invalidos.
+- 401: token ausente ou invalido.
+- 404: veiculo do usuario ou local de uso nao encontrado.
+
+
+12. ROTAS DE GAMIFICACAO
+========================
+
+12.1 GET /api/gamificacao/me
+----------------------------
+
+O que faz:
+Retorna pontos sustentaveis e selos desbloqueados pelo usuario.
+
+Autenticacao:
+Precisa de token JWT.
+
+Request:
+Nao possui body.
+
+Regras:
+
+- Pontos sustentaveis = floor(totalCo2EvitadoKg * 100).
+- Selos sao calculados pelo total historico de CO2e evitado.
+
+Selos:
+
+- Iniciante Verde: 1 kg.
+- Motorista Consciente: 5 kg.
+- Guardiao do Ar: 10 kg.
+- Referencia Sustentavel: 25 kg.
+
+Response 200:
+
+{
+  "totalCo2EvitadoKg": 6.200000,
+  "pontosSustentaveis": 620,
+  "selos": [
+    {
+      "nome": "Iniciante Verde",
+      "marcoKg": 1,
+      "desbloqueado": true
+    },
+    {
+      "nome": "Motorista Consciente",
+      "marcoKg": 5,
+      "desbloqueado": true
+    },
+    {
+      "nome": "Guardiao do Ar",
+      "marcoKg": 10,
+      "desbloqueado": false
+    },
+    {
+      "nome": "Referencia Sustentavel",
+      "marcoKg": 25,
+      "desbloqueado": false
+    }
+  ]
+}
+
+Possiveis retornos:
+
+- 200: gamificacao calculada.
+- 401: token ausente ou invalido.
+
+
+13. ROTAS DE RANKING
+====================
+
+13.1 GET /api/ranking?periodo=mensal&limit=10
+---------------------------------------------
+
+O que faz:
+Retorna ranking mensal de sustentabilidade com base no CO2e evitado no mes atual.
+
+Autenticacao:
+Precisa de token JWT.
+
+Query params:
+
+- periodo: opcional. Atualmente aceita apenas mensal. Padrao: mensal.
+- limit: opcional. Quantidade maxima de itens. Minimo 1, maximo 100. Padrao: 10.
+
+Regras:
+
+- Soma as passagens do mes atual.
+- Ordena por CO2e evitado de forma decrescente.
+- Em caso de empate, ordena por nome.
+- Pontos sustentaveis = floor(co2EvitadoKg * 100).
+
+Response 200:
+
+{
+  "periodo": "mensal",
+  "inicio": "2026-05-01T00:00:00Z",
+  "fim": "2026-06-01T00:00:00Z",
+  "itens": [
+    {
+      "posicao": 1,
+      "userId": 1,
+      "nome": "Roger",
+      "co2EvitadoKg": 3.500000,
+      "pontosSustentaveis": 350
+    }
+  ]
+}
+
+Possiveis retornos:
+
+- 200: ranking calculado.
+- 400: periodo invalido.
+- 401: token ausente ou invalido.
+
+
+14. ROTAS ADMIN - FATORES DE EMISSAO
+====================================
+
+Estas rotas sao protegidas por role admin.
+
+Motivo:
+Fatores de emissao sao premissas globais do motor de calculo. Alterar esses dados muda os resultados ambientais das passagens futuras.
+
+
+14.1 GET /api/admin/fatores-emissao
+-----------------------------------
+
+O que faz:
+Lista todos os fatores de emissao por combustivel.
+
+Autenticacao:
+Precisa de token JWT com role admin.
+
+Request:
+Nao possui body.
+
+Response 200:
+
+[
+  {
+    "tipoCombustivel": "gasolina",
+    "fatorEmissao": 2.31,
+    "consumoMarchaLenta": 0.8,
+    "consumoAdicionalAceleracao": 0.015
+  }
+]
+
+Possiveis retornos:
+
+- 200: lista fatores.
+- 401: token ausente ou invalido.
+- 403: usuario sem role admin.
+
+
+14.2 GET /api/admin/fatores-emissao/{tipoCombustivel}
+-----------------------------------------------------
+
+O que faz:
+Busca um fator pelo combustivel.
+
+Parametro de rota:
+
+- tipoCombustivel: gasolina, etanol ou diesel.
+
+Response 200:
+
+{
+  "tipoCombustivel": "gasolina",
+  "fatorEmissao": 2.31,
+  "consumoMarchaLenta": 0.8,
+  "consumoAdicionalAceleracao": 0.015
+}
+
+Possiveis retornos:
+
+- 200: fator encontrado.
+- 400: combustivel invalido.
+- 401: token ausente ou invalido.
+- 403: usuario sem role admin.
+- 404: fator nao encontrado.
+
+
+14.3 POST /api/admin/fatores-emissao
+------------------------------------
+
+O que faz:
+Cria um novo fator de emissao.
+
+Request body:
+
+{
+  "tipoCombustivel": "gasolina",
+  "fatorEmissao": 2.31,
+  "consumoMarchaLenta": 0.8,
+  "consumoAdicionalAceleracao": 0.015
+}
+
+Campos:
+
+- tipoCombustivel: obrigatorio, gasolina/etanol/diesel.
+- fatorEmissao: obrigatorio, maior que 0.
+- consumoMarchaLenta: obrigatorio, maior ou igual a 0.
+- consumoAdicionalAceleracao: obrigatorio, maior ou igual a 0.
+
+Regras:
+
+- Nao permite cadastrar combustivel duplicado.
+
+Possiveis retornos:
+
+- 201: fator criado.
+- 400: payload invalido ou fator ja existente.
+- 401: token ausente ou invalido.
+- 403: usuario sem role admin.
+
+
+14.4 PUT /api/admin/fatores-emissao/{tipoCombustivel}
+-----------------------------------------------------
+
+O que faz:
+Atualiza um fator de emissao existente.
+
+Parametro de rota:
+
+- tipoCombustivel: combustivel que sera atualizado.
+
+Request body:
+
+{
+  "tipoCombustivel": "gasolina",
+  "fatorEmissao": 2.40,
+  "consumoMarchaLenta": 0.85,
+  "consumoAdicionalAceleracao": 0.016
+}
+
+Regras:
+
+- O tipoCombustivel da rota deve ser igual ao tipoCombustivel do body.
+- Nao permite tipos fora da lista aceita.
+
+Possiveis retornos:
+
+- 200: fator atualizado.
+- 400: dados invalidos.
+- 401: token ausente ou invalido.
+- 403: usuario sem role admin.
+- 404: fator nao encontrado.
+
+
+14.5 DELETE /api/admin/fatores-emissao/{tipoCombustivel}
+--------------------------------------------------------
+
+O que faz:
+Remove um fator de emissao.
+
+Regras:
+
+- Nao permite excluir fator usado por veiculos.
+
+Possiveis retornos:
+
+- 204: fator removido.
+- 400: fator em uso ou tipo invalido.
+- 401: token ausente ou invalido.
+- 403: usuario sem role admin.
+- 404: fator nao encontrado.
+
+
+15. ROTAS ADMIN - PARAMETROS DO CENARIO SEM TAG
+===============================================
+
+Estas rotas sao protegidas por role admin.
+
+Motivo:
+Parametros de cenario definem fila, espera em cabine e emissao de ticket em papel. Eles afetam diretamente o calculo futuro de CO2e evitado.
+
+
+15.1 GET /api/admin/parametros-cenario
+--------------------------------------
+
+O que faz:
+Lista parametros ambientais por tipo de local.
+
+Response 200:
+
+[
+  {
+    "tipoLocal": "pedagio",
+    "tempoMedioFilaMinutos": 3,
+    "tempoEsperaCabineSegundos": 20,
+    "emissaoTicketPapelKg": 0.002
+  }
+]
+
+Possiveis retornos:
+
+- 200: lista parametros.
+- 401: token ausente ou invalido.
+- 403: usuario sem role admin.
+
+
+15.2 GET /api/admin/parametros-cenario/{tipoLocal}
+--------------------------------------------------
+
+O que faz:
+Busca parametros pelo tipo de local.
+
+Parametro de rota:
+
+- tipoLocal: pedagio ou estacionamento.
+
+Possiveis retornos:
+
+- 200: parametros encontrados.
+- 400: tipo de local invalido.
+- 401: token ausente ou invalido.
+- 403: usuario sem role admin.
+- 404: parametros nao encontrados.
+
+
+15.3 POST /api/admin/parametros-cenario
+---------------------------------------
+
+O que faz:
+Cria parametros ambientais para um tipo de local.
+
+Request body:
+
+{
+  "tipoLocal": "pedagio",
+  "tempoMedioFilaMinutos": 3,
+  "tempoEsperaCabineSegundos": 20,
+  "emissaoTicketPapelKg": 0.002
+}
+
+Campos:
+
+- tipoLocal: obrigatorio, pedagio/estacionamento.
+- tempoMedioFilaMinutos: entre 0 e 240.
+- tempoEsperaCabineSegundos: entre 0 e 3600.
+- emissaoTicketPapelKg: maior ou igual a 0.
+
+Regras:
+
+- Nao permite duplicar tipoLocal.
+
+Possiveis retornos:
+
+- 201: parametros criados.
+- 400: payload invalido ou tipo ja cadastrado.
+- 401: token ausente ou invalido.
+- 403: usuario sem role admin.
+
+
+15.4 PUT /api/admin/parametros-cenario/{tipoLocal}
+--------------------------------------------------
+
+O que faz:
+Atualiza parametros ambientais de um tipo de local.
+
+Regras:
+
+- O tipoLocal da rota deve ser igual ao tipoLocal do body.
+- Impacta calculos futuros.
+
+Possiveis retornos:
+
+- 200: parametros atualizados.
+- 400: dados invalidos.
+- 401: token ausente ou invalido.
+- 403: usuario sem role admin.
+- 404: parametros nao encontrados.
+
+
+15.5 DELETE /api/admin/parametros-cenario/{tipoLocal}
+-----------------------------------------------------
+
+O que faz:
+Remove parametros ambientais.
+
+Regras:
+
+- Nao permite excluir parametros usados por locais.
+
+Possiveis retornos:
+
+- 204: parametros removidos.
+- 400: parametros em uso ou tipo invalido.
+- 401: token ausente ou invalido.
+- 403: usuario sem role admin.
+- 404: parametros nao encontrados.
+
+
+16. ROTAS ADMIN - LOCAIS DE USO
+===============================
+
+Estas rotas sao protegidas por role admin.
+
+Motivo:
+Locais de uso sao dados compartilhados por toda a base. Eles definem onde uma passagem ou simulacao pode ocorrer.
+
+
+16.1 GET /api/admin/locais-uso
+------------------------------
+
+O que faz:
+Lista todos os locais de uso.
+
+Response 200:
+
+[
+  {
+    "id": 1,
+    "nome": "Pedagio Demo",
+    "tipoLocal": "pedagio"
+  }
+]
+
+Possiveis retornos:
+
+- 200: lista locais.
+- 401: token ausente ou invalido.
+- 403: usuario sem role admin.
+
+
+16.2 GET /api/admin/locais-uso/{id}
+-----------------------------------
+
+O que faz:
+Busca local pelo id.
+
+Possiveis retornos:
+
+- 200: local encontrado.
+- 401: token ausente ou invalido.
+- 403: usuario sem role admin.
+- 404: local nao encontrado.
+
+
+16.3 POST /api/admin/locais-uso
+-------------------------------
+
+O que faz:
+Cria local de uso.
+
+Request body:
+
+{
+  "nome": "Pedagio BR Demo",
+  "tipoLocal": "pedagio"
+}
+
+Campos:
+
+- nome: obrigatorio, maximo 100 caracteres.
+- tipoLocal: obrigatorio, pedagio/estacionamento.
+
+Regras:
+
+- O tipoLocal precisa ter parametros ambientais cadastrados.
+
+Possiveis retornos:
+
+- 201: local criado.
+- 400: payload invalido ou tipoLocal sem parametros.
+- 401: token ausente ou invalido.
+- 403: usuario sem role admin.
+
+
+16.4 PUT /api/admin/locais-uso/{id}
+-----------------------------------
+
+O que faz:
+Atualiza nome e tipo de um local.
+
+Request body:
+
+{
+  "nome": "Estacionamento Shopping Demo",
+  "tipoLocal": "estacionamento"
+}
+
+Regras:
+
+- O tipoLocal precisa ter parametros ambientais cadastrados.
+
+Possiveis retornos:
+
+- 200: local atualizado.
+- 400: dados invalidos.
+- 401: token ausente ou invalido.
+- 403: usuario sem role admin.
+- 404: local nao encontrado.
+
+
+16.5 DELETE /api/admin/locais-uso/{id}
+--------------------------------------
+
+O que faz:
+Remove um local de uso.
+
+Regras:
+
+- Nao permite excluir local com passagens registradas.
+
+Possiveis retornos:
+
+- 204: local removido.
+- 400: local possui passagens registradas.
+- 401: token ausente ou invalido.
+- 403: usuario sem role admin.
+- 404: local nao encontrado.
+
+
+17. SEED INICIAL DO BANCO
+=========================
+
+O backend possui seed tecnico para permitir demonstracao.
+
+Fatores de emissao:
+
+- gasolina
+- etanol
+- diesel
+
+Parametros:
+
+- pedagio
+- estacionamento
+
+Locais:
+
+- Pedagio Demo
+- Estacionamento Demo
+
+Isso permite cadastrar usuario, cadastrar veiculo, registrar passagem, consultar dashboard, simular e testar gamificacao/ranking.
+
+
+18. CORS
+========
+
+O backend possui CORS configurado para facilitar testes locais.
+
+Origem permitidas no appsettings:
+
+- http://localhost:3000
+- http://localhost:5173
+- http://localhost:5500
+- http://localhost:5000
+- http://127.0.0.1:3000
+- http://127.0.0.1:5173
+- http://127.0.0.1:5500
+
+Tambem aceita origin "null" para testes abrindo HTML local diretamente.
+
+Headers e metodos:
+
+- Permite qualquer header, incluindo Authorization.
+- Permite qualquer metodo HTTP.
+
+
+19. ORDEM SUGERIDA PARA APRESENTACAO
+====================================
+
+1. Abrir Swagger:
+   http://localhost:5295/swagger
+
+2. Cadastrar usuario:
+   POST /api/auth/register
+
+3. Fazer login:
+   POST /api/auth/login
+
+4. Autorizar no Swagger com JWT.
+
+5. Cadastrar veiculo:
+   POST /api/veiculos
+
+6. Consultar veiculos:
+   GET /api/veiculos
+
+7. Registrar passagem:
+   POST /api/passagens
+
+8. Consultar historico:
+   GET /api/passagens
+
+9. Ver dashboard:
+   GET /api/dashboard/impacto
+
+10. Testar simulador:
+    POST /api/simulador
+
+11. Ver gamificacao:
+    GET /api/gamificacao/me
+
+12. Ver ranking:
+    GET /api/ranking?periodo=mensal&limit=10
+
+13. Explicar rotas admin:
+    GET /api/admin/fatores-emissao
+    GET /api/admin/parametros-cenario
+    GET /api/admin/locais-uso
+
+
+20. OBSERVACOES PARA DEFESA DO PROJETO
+======================================
+
+- Controllers apenas recebem requisicoes e retornam respostas HTTP.
+- Services concentram regras de negocio e validacoes.
+- DTOs separam entrada/saida dos Models do banco.
+- JWT protege rotas de usuario e diferencia admin por role.
+- EF Core aplica migrations e acessa PostgreSQL.
+- Calculo de CO2e e feito no backend, evitando manipulacao pelo cliente.
+- Simulador nao salva historico.
+- Ranking e gamificacao usam passagens realmente registradas.
+- Rotas admin existem para alterar premissas ambientais sem mudar codigo-fonte.

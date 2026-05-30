@@ -4,6 +4,7 @@ using EcoTag.Core.Services;
 using EcoTag.Core.Swagger;
 using EcoTag.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
@@ -26,6 +27,9 @@ if (string.IsNullOrWhiteSpace(jwtKey))
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, ".keys")))
+    .SetApplicationName("EcoTag");
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(CorsPolicyName, policy =>
@@ -119,14 +123,35 @@ if (app.Environment.IsDevelopment())
 
 if (app.Environment.IsDevelopment())
 {
-    
-    app.UseSwagger();
-
-    app.UseSwagger(options =>
+    app.Use(async (context, next) =>
     {
-        options.OpenApiVersion = OpenApiSpecVersion.OpenApi2_0;
+        if (!context.Request.Path.Equals("/swagger/v1/swagger.json", StringComparison.OrdinalIgnoreCase))
+        {
+            await next();
+            return;
+        }
+
+        var originalBody = context.Response.Body;
+        await using var buffer = new MemoryStream();
+        context.Response.Body = buffer;
+
+        await next();
+
+        buffer.Position = 0;
+        var swaggerJson = await new StreamReader(buffer).ReadToEndAsync();
+
+        // Swagger UI usado no projeto nao reconhece a revisao 3.0.4 emitida pelo Microsoft.OpenApi 2.x.
+        swaggerJson = swaggerJson.Replace("\"openapi\": \"3.0.4\"", "\"openapi\": \"3.0.1\"");
+
+        var bytes = Encoding.UTF8.GetBytes(swaggerJson);
+        context.Response.Body = originalBody;
+        context.Response.ContentType = "application/json; charset=utf-8";
+        context.Response.ContentLength = bytes.Length;
+
+        await context.Response.Body.WriteAsync(bytes);
     });
-    
+
+    app.UseSwagger();
     app.UseSwaggerUI(options =>
     {
         options.SwaggerEndpoint("/swagger/v1/swagger.json", "EcoTag v1");
