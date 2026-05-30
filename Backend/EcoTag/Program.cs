@@ -9,6 +9,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
+const string CorsPolicyName = "EcoTagLocalCors";
 
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
@@ -25,6 +26,28 @@ if (string.IsNullOrWhiteSpace(jwtKey))
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(CorsPolicyName, policy =>
+    {
+        var allowedOrigins = builder.Configuration
+            .GetSection("Cors:AllowedOrigins")
+            .Get<string[]>() ?? [];
+
+        policy.SetIsOriginAllowed(origin =>
+            origin.Equals("null", StringComparison.OrdinalIgnoreCase) ||
+            allowedOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase) ||
+            (allowedOrigins.Length == 0 && (
+                origin.StartsWith("http://localhost", StringComparison.OrdinalIgnoreCase) ||
+                origin.StartsWith("https://localhost", StringComparison.OrdinalIgnoreCase) ||
+                origin.StartsWith("http://127.0.0.1", StringComparison.OrdinalIgnoreCase) ||
+                origin.StartsWith("https://127.0.0.1", StringComparison.OrdinalIgnoreCase))));
+
+        policy
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
@@ -96,17 +119,21 @@ if (app.Environment.IsDevelopment())
 
 if (app.Environment.IsDevelopment())
 {
+    
+    app.UseSwagger();
+
     app.UseSwagger(options =>
     {
         options.OpenApiVersion = OpenApiSpecVersion.OpenApi2_0;
     });
-
+    
     app.UseSwaggerUI(options =>
     {
         options.SwaggerEndpoint("/swagger/v1/swagger.json", "EcoTag v1");
     });
 }
 
+app.UseCors(CorsPolicyName);
 app.UseAuthentication();
 app.UseAuthorization();
 
