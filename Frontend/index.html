@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EcoTag — Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="logo">🌱 EcoTag</div>
+  <nav class="nav">
+    <a href="#">Home</a>
+    <a href="#sobre">Sobre Nós</a>
+  </nav>
+  <div class="actions">
+    <!-- Botões trocam conforme login -->
+    <div id="headerDeslogado">
+      <button class="btn-login" onclick="window.location.href='login.html'">Login</button>
+      <button class="btn-signup" onclick="window.location.href='Register.html'">Cadastrar</button>
+    </div>
+    <div id="headerLogado" style="display:none;">
+      <span id="saudacao" style="color:white; margin-right:12px; font-weight:600;"></span>
+      <button class="btn-login" onclick="logout()">Sair</button>
+    </div>
+  </div>
+</header>
+
+<!-- AVISO: não logado -->
+<div id="avisoLogin" class="aviso-login" style="display:none;">
+  ⚠️ Você precisa estar logado para usar o sistema.
+  <a href="login.html">Clique aqui para entrar</a>
+</div>
+
+<!-- CONTEÚDO PRINCIPAL -->
+<section class="container" id="conteudoPrincipal" style="display:none;">
+
+  <!-- DASHBOARD -->
+  <div class="card dashboard">
+    <h2>📊 Seu Impacto</h2>
+    <div id="dashboardConteudo">
+      <p class="carregando">Carregando...</p>
+    </div>
+  </div>
+
+  <!-- ADICIONAR VEÍCULO -->
+  <div class="card">
+    <h2>🚗 Adicionar Veículo</h2>
+    <div id="erroVeiculo" class="msg-erro" style="display:none;"></div>
+
+    <select id="category">
+      <option value="carro">Carro</option>
+      <option value="moto">Moto</option>
+      <option value="caminhao">Caminhão</option>
+    </select>
+
+    <select id="fuel">
+      <option value="gasolina">Gasolina</option>
+      <option value="etanol">Etanol</option>
+      <option value="diesel">Diesel</option>
+    </select>
+
+    <button id="btnAdicionarVeiculo" onclick="adicionarVeiculoUI()">Adicionar</button>
+  </div>
+
+  <!-- LISTA DE VEÍCULOS -->
+  <div class="card">
+    <h2>📋 Seus Veículos</h2>
+    <ul id="vehicleList">
+      <li class="carregando">Carregando...</li>
+    </ul>
+  </div>
+
+  <!-- REGISTRAR PASSAGEM -->
+  <div class="card destaque">
+    <h2>🏷️ Registrar Passagem de Tag</h2>
+    <p style="font-size:0.85rem; color:#555; margin-top:6px;">Registre cada vez que você usa a tag</p>
+    <div id="erroPassagem" class="msg-erro" style="display:none;"></div>
+
+    <select id="veiculoPassagem">
+      <option value="">Selecione o veículo</option>
+    </select>
+
+    <select id="localPassagem">
+      <option value="">Selecione o local</option>
+    </select>
+
+    <button onclick="registrarPassagemUI()">Registrar Passagem</button>
+    <div id="resultadoPassagem" class="msg-sucesso" style="display:none;"></div>
+  </div>
+
+  <!-- SIMULADOR -->
+  <div class="card destaque">
+    <h2>🌍 Simulador de CO₂</h2>
+    <p style="font-size:0.85rem; color:#555; margin-top:6px;">Simule sem salvar no histórico</p>
+    <div id="erroSimulador" class="msg-erro" style="display:none;"></div>
+
+    <select id="veiculoSimulador">
+      <option value="">Selecione o veículo</option>
+    </select>
+
+    <select id="localSimulador">
+      <option value="">Selecione o local</option>
+    </select>
+
+    <input type="number" id="dias" placeholder="Quantos dias?" min="1" value="30" />
+    <input type="number" id="passagensDia" placeholder="Passagens por dia?" min="1" value="1" />
+    <button onclick="simularUI()">Simular Impacto</button>
+    <div id="resultadoSimulador" style="display:none;"></div>
+  </div>
+
+  <!-- GAMIFICAÇÃO -->
+  <div class="card">
+    <h2>🏅 Seus Pontos e Selos</h2>
+    <div id="gamificacaoConteudo">
+      <p class="carregando">Carregando...</p>
+    </div>
+  </div>
+
+  <!-- RANKING -->
+  <div class="card">
+    <h2>🏆 Ranking Mensal</h2>
+    <div id="rankingConteudo">
+      <p class="carregando">Carregando...</p>
+    </div>
+  </div>
+
+  <!-- PASSAGENS RECENTES -->
+  <div class="card">
+    <h2>🕒 Passagens Recentes</h2>
+    <ul id="passagensLista">
+      <li class="carregando">Carregando...</li>
+    </ul>
+  </div>
+
+</section>
+
+<!-- SOBRE NÓS -->
+<section class="sobre-full" id="sobre">
+  <div class="sobre-row">
+    <div class="sobre-texto">
+      <h2>🌱 O que é o EcoTag?</h2>
+      <p>O EcoTag é uma solução que transforma pequenas ações do dia a dia em impacto ambiental mensurável. Ao utilizar pagamentos automáticos, você reduz o tempo parado e diminui a emissão de CO₂.</p>
+    </div>
+    <div class="sobre-img"></div>
+  </div>
+  <div class="sobre-row invertido">
+    <div class="sobre-texto">
+      <h2>🌍 Por que isso importa?</h2>
+      <p>Paradas em pedágios geram aceleração, consumo de combustível e emissões desnecessárias. Nosso sistema torna esse impacto visível e ajuda na conscientização ambiental.</p>
+    </div>
+    <div class="sobre-img"></div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="footer-container">
+    <div class="footer-col">
+      <h3>🌱 EcoTag</h3>
+      <p>Transformando mobilidade em impacto sustentável.</p>
+    </div>
+    <div class="footer-col">
+      <h4>Projeto</h4>
+      <ul>
+        <li>Simulador de CO₂</li>
+        <li>Dashboard</li>
+        <li>Gestão de veículos</li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Tecnologias</h4>
+      <ul>
+        <li>HTML, CSS, JavaScript</li>
+        <li>C# / ASP.NET Core</li>
+        <li>PostgreSQL</li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p>© 2026 EcoTag • Todos os direitos reservados</p>
+  </div>
+</footer>
+
+<!-- Scripts -->
+<script src="api.js"></script>
+<script src="script.js"></script>
+
+</body>
+</html>
