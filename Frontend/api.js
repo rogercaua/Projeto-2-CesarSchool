@@ -1,195 +1,254 @@
-// =============================================
-// api.js - Funcoes para chamar o backend EcoTag
-// Troque BASE_URL pela URL do servidor se necessario.
-// =============================================
+// EcoTag API helpers.
+// The frontend is static, so the backend URL can be adjusted in localStorage if needed.
 
-const BASE_URL = "http://localhost:5295";
+const BASE_URL = localStorage.getItem("ecotagApiBaseUrl") || "http://localhost:5295";
+const TOKEN_KEY = "ecotagToken";
+const USER_KEY = "ecotagUser";
 
 function getToken() {
-  return localStorage.getItem("token");
+  return localStorage.getItem(TOKEN_KEY) || localStorage.getItem("token");
 }
 
-function authHeader() {
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${getToken()}`,
-  };
+function getUsuario() {
+  const raw = localStorage.getItem(USER_KEY);
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
 }
 
-function salvarTokenEIr(token) {
+function salvarUsuario(user) {
+  if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
+}
+
+function salvarSessao(authResponse) {
+  const token = authResponse?.token || authResponse;
+  const user = authResponse?.user || null;
+
+  if (!token) {
+    throw new Error("Token de acesso nao recebido.");
+  }
+
+  localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem("token", token);
-  window.location.href = "index.html";
+  if (user) salvarUsuario(user);
+}
+
+function salvarSessaoEIr(authResponse) {
+  salvarSessao(authResponse);
+  window.location.href = "index.html#/dashboard";
+}
+
+function limparSessao() {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+  localStorage.removeItem("token");
 }
 
 function logout() {
-  localStorage.removeItem("token");
-  window.location.href = "login.html";
+  limparSessao();
+  window.location.href = "index.html#/login";
+}
+
+function authHeader() {
+  const token = getToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+async function apiRequest(path, options = {}) {
+  const needsAuth = options.auth !== false;
+  const headers = {
+    "Content-Type": "application/json",
+    ...(needsAuth ? authHeader() : {}),
+    ...(options.headers || {}),
+  };
+
+  const requestOptions = {
+    ...options,
+    headers,
+  };
+
+  delete requestOptions.auth;
+
+  if (requestOptions.body && typeof requestOptions.body !== "string") {
+    requestOptions.body = JSON.stringify(requestOptions.body);
+  }
+
+  const response = await fetch(`${BASE_URL}${path}`, requestOptions);
+  const contentType = response.headers.get("content-type") || "";
+  const data = contentType.includes("application/json")
+    ? await response.json().catch(() => null)
+    : await response.text().catch(() => "");
+
+  if (response.status === 401) {
+    limparSessao();
+  }
+
+  if (!response.ok) {
+    const message = data?.message || data || "Nao foi possivel concluir a acao.";
+    const error = new Error(message);
+    error.status = response.status;
+    throw error;
+  }
+
+  return response.status === 204 ? null : data;
 }
 
 async function login(email, senha) {
-  const res = await fetch(`${BASE_URL}/api/auth/login`, {
+  return apiRequest("/api/auth/login", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
+    auth: false,
+    body: {
       email,
       password: String(senha),
-    }),
+    },
   });
-
-  if (!res.ok) {
-    throw new Error("E-mail ou senha invalidos.");
-  }
-
-  const data = await res.json();
-  return data.token;
 }
 
 async function registrar(nome, email, senha) {
-  const res = await fetch(`${BASE_URL}/api/auth/register`, {
+  return apiRequest("/api/auth/register", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
+    auth: false,
+    body: {
       nome,
       email,
       password: String(senha),
-    }),
+    },
   });
+}
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || "Erro ao registrar.");
-  }
+async function getPerfil() {
+  const user = await apiRequest("/api/users/me");
+  salvarUsuario(user);
+  return user;
+}
+
+async function atualizarPerfil(nome, email) {
+  const user = await apiRequest("/api/users/me", {
+    method: "PUT",
+    body: { nome, email },
+  });
+  salvarUsuario(user);
+  return user;
 }
 
 async function listarVeiculos() {
-  const res = await fetch(`${BASE_URL}/api/veiculos`, {
-    headers: authHeader(),
-  });
-
-  if (res.status === 401) {
-    logout();
-    return [];
-  }
-
-  return res.json();
+  return apiRequest("/api/veiculos");
 }
 
 async function adicionarVeiculo(tipoVeiculo, tipoCombustivel) {
-  const res = await fetch(`${BASE_URL}/api/veiculos`, {
+  return apiRequest("/api/veiculos", {
     method: "POST",
-    headers: authHeader(),
-    body: JSON.stringify({ tipoVeiculo, tipoCombustivel }),
+    body: { tipoVeiculo, tipoCombustivel },
   });
+}
 
-  if (!res.ok) {
-    throw new Error("Erro ao adicionar veiculo.");
-  }
-
-  return res.json();
+async function atualizarVeiculo(id, tipoVeiculo, tipoCombustivel) {
+  return apiRequest(`/api/veiculos/${id}`, {
+    method: "PUT",
+    body: { tipoVeiculo, tipoCombustivel },
+  });
 }
 
 async function deletarVeiculo(id) {
-  const res = await fetch(`${BASE_URL}/api/veiculos/${id}`, {
+  return apiRequest(`/api/veiculos/${id}`, {
     method: "DELETE",
-    headers: authHeader(),
   });
-
-  if (!res.ok) {
-    throw new Error("Erro ao remover veiculo.");
-  }
 }
 
 async function getDashboard() {
-  const res = await fetch(`${BASE_URL}/api/dashboard/impacto`, {
-    headers: authHeader(),
-  });
-
-  if (res.status === 401) {
-    logout();
-    return null;
-  }
-
-  return res.json();
-}
-
-async function registrarPassagem(veiculoId, localUsoId) {
-  const res = await fetch(`${BASE_URL}/api/passagens`, {
-    method: "POST",
-    headers: authHeader(),
-    body: JSON.stringify({ veiculoId, localUsoId }),
-  });
-
-  if (!res.ok) {
-    throw new Error("Erro ao registrar passagem.");
-  }
-
-  return res.json();
-}
-
-async function listarPassagens() {
-  const res = await fetch(`${BASE_URL}/api/passagens`, {
-    headers: authHeader(),
-  });
-
-  if (res.status === 401) {
-    logout();
-    return [];
-  }
-
-  return res.json();
-}
-
-async function simular(veiculoId, localUsoId, dias, passagensPorDia) {
-  const res = await fetch(`${BASE_URL}/api/simulador`, {
-    method: "POST",
-    headers: authHeader(),
-    body: JSON.stringify({ veiculoId, localUsoId, dias, passagensPorDia }),
-  });
-
-  if (!res.ok) {
-    throw new Error("Erro ao simular.");
-  }
-
-  return res.json();
-}
-
-async function getGamificacao() {
-  const res = await fetch(`${BASE_URL}/api/gamificacao/me`, {
-    headers: authHeader(),
-  });
-
-  if (res.status === 401) {
-    logout();
-    return null;
-  }
-
-  return res.json();
-}
-
-async function getRanking(periodo = "mensal", limit = 10) {
-  const res = await fetch(
-    `${BASE_URL}/api/ranking?periodo=${periodo}&limit=${limit}`,
-    { headers: authHeader() }
-  );
-
-  if (res.status === 401) {
-    logout();
-    return null;
-  }
-
-  return res.json();
+  return apiRequest("/api/dashboard/impacto");
 }
 
 async function listarLocais() {
-  const res = await fetch(`${BASE_URL}/api/admin/locais-uso`, {
-    headers: authHeader(),
+  return apiRequest("/api/locais-uso");
+}
+
+async function registrarPassagem(veiculoId, localUsoId) {
+  return apiRequest("/api/passagens", {
+    method: "POST",
+    body: { veiculoId, localUsoId },
   });
+}
 
-  if (!res.ok) {
-    return [];
-  }
+async function listarPassagens() {
+  return apiRequest("/api/passagens");
+}
 
-  return res.json();
+async function simular(veiculoId, localUsoId, dias, passagensPorDia) {
+  return apiRequest("/api/simulador", {
+    method: "POST",
+    body: { veiculoId, localUsoId, dias, passagensPorDia },
+  });
+}
+
+async function getGamificacao() {
+  return apiRequest("/api/gamificacao/me");
+}
+
+async function getRanking(periodo = "mensal", limit = 10) {
+  return apiRequest(`/api/ranking?periodo=${periodo}&limit=${limit}`);
+}
+
+async function adminListarLocais() {
+  return apiRequest("/api/admin/locais-uso");
+}
+
+async function adminCriarLocal(nome, tipoLocal) {
+  return apiRequest("/api/admin/locais-uso", {
+    method: "POST",
+    body: { nome, tipoLocal },
+  });
+}
+
+async function adminAtualizarLocal(id, nome, tipoLocal) {
+  return apiRequest(`/api/admin/locais-uso/${id}`, {
+    method: "PUT",
+    body: { nome, tipoLocal },
+  });
+}
+
+async function adminExcluirLocal(id) {
+  return apiRequest(`/api/admin/locais-uso/${id}`, {
+    method: "DELETE",
+  });
+}
+
+async function adminListarFatores() {
+  return apiRequest("/api/admin/fatores-emissao");
+}
+
+async function adminSalvarFator(tipoOriginal, payload) {
+  const isEditing = Boolean(tipoOriginal);
+  return apiRequest(`/api/admin/fatores-emissao${isEditing ? `/${tipoOriginal}` : ""}`, {
+    method: isEditing ? "PUT" : "POST",
+    body: payload,
+  });
+}
+
+async function adminExcluirFator(tipoCombustivel) {
+  return apiRequest(`/api/admin/fatores-emissao/${tipoCombustivel}`, {
+    method: "DELETE",
+  });
+}
+
+async function adminListarParametros() {
+  return apiRequest("/api/admin/parametros-cenario");
+}
+
+async function adminSalvarParametro(tipoOriginal, payload) {
+  const isEditing = Boolean(tipoOriginal);
+  return apiRequest(`/api/admin/parametros-cenario${isEditing ? `/${tipoOriginal}` : ""}`, {
+    method: isEditing ? "PUT" : "POST",
+    body: payload,
+  });
+}
+
+async function adminExcluirParametro(tipoLocal) {
+  return apiRequest(`/api/admin/parametros-cenario/${tipoLocal}`, {
+    method: "DELETE",
+  });
 }

@@ -3,82 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>EcoTag — Login</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="login.css" />
+  <title>EcoTag - Login</title>
+  <meta http-equiv="refresh" content="0; url=index.html#/login" />
 </head>
 <body>
-
-<header class="header">
-  <div class="logo">🌱 EcoTag</div>
-  <nav class="nav">
-    <a href="index.html">Home</a>
-    <a href="index.html#sobre">Sobre Nós</a>
-  </nav>
-  <div class="actions">
-    <a class="btn-cadastrar" href="Register.html">Cadastrar</a>
-  </div>
-</header>
-
-<main class="login-page">
-  <div class="login-card">
-    <h2>Bem-vindo de volta 🌱</h2>
-    <p>Entre para ver seu impacto ambiental</p>
-
-    <!-- Mensagem de erro -->
-    <div id="erro" class="mensagem-erro" style="display:none;"></div>
-
-    <form id="loginForm">
-      <label for="email">E-mail</label>
-      <input type="email" id="email" placeholder="seu@email.com" required />
-
-      <label for="password">Senha</label>
-      <input type="password" id="password" placeholder="••••••••" required />
-
-      <button type="submit" id="btnLogin">Entrar</button>
-    </form>
-
-    <div class="login-links">
-      <span>Não tem conta?</span>
-      <a href="Register.html">Cadastre-se</a>
-    </div>
-  </div>
-</main>
-
-<footer class="footer">
-  <p>© 2026 EcoTag • Todos os direitos reservados</p>
-</footer>
-
-<script src="api.js"></script>
-<script>
-  // Se já está logado, vai para a home
-  if (getToken()) window.location.href = "index.html";
-
-  document.getElementById("loginForm").addEventListener("submit", async function (e) {
-    e.preventDefault();
-
-    const email    = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value.trim();
-    const btn      = document.getElementById("btnLogin");
-    const erro     = document.getElementById("erro");
-
-    // Feedback visual de carregando
-    btn.textContent = "Entrando...";
-    btn.disabled = true;
-    erro.style.display = "none";
-
-    try {
-      const token = await login(email, password);
-      salvarTokenEIr(token); // salva e redireciona para index.html
-    } catch (err) {
-      erro.textContent = err.message;
-      erro.style.display = "block";
-      btn.textContent = "Entrar";
-      btn.disabled = false;
-    }
-  });
-</script>
-
+  <p>Redirecionando para <a href="index.html#/login">login</a>...</p>
+  <script>
+    window.location.replace("index.html#/login");
+  </script>
 </body>
 </html>

@@ -3,86 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>EcoTag — Cadastro</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="login.css" />
+  <title>EcoTag - Cadastro</title>
+  <meta http-equiv="refresh" content="0; url=index.html#/cadastro" />
 </head>
 <body>
-
-<header class="header">
-  <div class="logo">🌱 EcoTag</div>
-  <nav class="nav">
-    <a href="index.html">Home</a>
-    <a href="index.html#sobre">Sobre Nós</a>
-  </nav>
-  <div class="actions">
-    <a class="btn-cadastrar" href="login.html">Login</a>
-  </div>
-</header>
-
-<main class="login-page">
-  <div class="login-card">
-    <h2>Criar conta 🌱</h2>
-    <p>Comece a medir seu impacto ambiental hoje</p>
-
-    <div id="erro" class="mensagem-erro" style="display:none;"></div>
-    <div id="sucesso" class="mensagem-sucesso" style="display:none;"></div>
-
-    <form id="registerForm">
-      <label for="nome">Nome</label>
-      <input type="text" id="nome" placeholder="Seu nome" required />
-
-      <label for="email">E-mail</label>
-      <input type="email" id="email" placeholder="seu@email.com" required />
-
-      <label for="password">Senha</label>
-      <input type="password" id="password" placeholder="Mínimo 6 caracteres" required minlength="6" />
-
-      <button type="submit" id="btnCadastrar">Criar conta</button>
-    </form>
-
-    <div class="login-links">
-      <span>Já tem conta?</span>
-      <a href="login.html">Faça login</a>
-    </div>
-  </div>
-</main>
-
-<footer class="footer">
-  <p>© 2026 EcoTag • Todos os direitos reservados</p>
-</footer>
-
-<script src="api.js"></script>
-<script>
-  document.getElementById("registerForm").addEventListener("submit", async function (e) {
-    e.preventDefault();
-
-    const nome     = document.getElementById("nome").value.trim();
-    const email    = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value.trim();
-    const btn      = document.getElementById("btnCadastrar");
-    const erro     = document.getElementById("erro");
-    const sucesso  = document.getElementById("sucesso");
-
-    btn.textContent = "Cadastrando...";
-    btn.disabled = true;
-    erro.style.display = "none";
-    sucesso.style.display = "none";
-
-    try {
-      await registrar(nome, email, password);
-      sucesso.textContent = "Conta criada! Redirecionando para o login...";
-      sucesso.style.display = "block";
-      setTimeout(() => window.location.href = "login.html", 2000);
-    } catch (err) {
-      erro.textContent = err.message;
-      erro.style.display = "block";
-      btn.textContent = "Criar conta";
-      btn.disabled = false;
-    }
-  });
-</script>
-
+  <p>Redirecionando para <a href="index.html#/cadastro">cadastro</a>...</p>
+  <script>
+    window.location.replace("index.html#/cadastro");
+  </script>
 </body>
 </html>
