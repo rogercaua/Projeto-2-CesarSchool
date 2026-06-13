@@ -22,7 +22,8 @@ namespace EcoTag.Core.Services
             var veiculos = await _context.Veiculos
                 .AsNoTracking()
                 .Where(veiculo => veiculo.UsuarioId == userId)
-                .OrderBy(veiculo => veiculo.Id)
+                .OrderBy(veiculo => veiculo.Nome)
+                .ThenBy(veiculo => veiculo.Id)
                 .ToListAsync();
 
             return veiculos.Select(EcoTagMapper.ToResponse).ToList();
@@ -36,6 +37,7 @@ namespace EcoTag.Core.Services
             var veiculo = new VeiculoModel
             {
                 UsuarioId = userId,
+                Nome = NormalizeNome(request.Nome),
                 TipoVeiculo = tipoVeiculo,
                 TipoCombustivel = tipoCombustivel
             };
@@ -56,6 +58,7 @@ namespace EcoTag.Core.Services
                 return null;
             }
 
+            veiculo.Nome = NormalizeNome(request.Nome);
             veiculo.TipoVeiculo = NormalizeTipoVeiculo(request.TipoVeiculo);
             veiculo.TipoCombustivel = await NormalizeTipoCombustivelAsync(request.TipoCombustivel);
 
@@ -78,6 +81,16 @@ namespace EcoTag.Core.Services
             await _context.SaveChangesAsync();
 
             return true;
+        }
+
+        private static string NormalizeNome(string nome)
+        {
+            if (string.IsNullOrWhiteSpace(nome))
+            {
+                throw new ArgumentException("Informe o nome do veiculo.");
+            }
+
+            return nome.Trim();
         }
 
         private static string NormalizeTipoVeiculo(string tipoVeiculo)

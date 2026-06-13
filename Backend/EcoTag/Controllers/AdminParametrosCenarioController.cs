@@ -106,14 +106,14 @@ namespace EcoTag.Controllers
         }
 
         /// <summary>
-        /// Remove parametros nao utilizados por locais de uso.
+        /// Remove parametros nao obrigatorios e nao utilizados por locais de uso.
         /// </summary>
         /// <remarks>
-        /// #rota de admin: a exclusao e bloqueada quando existem locais vinculados ao tipo.
+        /// #rota de admin: os parametros padrao de pedagio e estacionamento devem ser editados, nao removidos.
         /// </remarks>
         /// <param name="tipoLocal">Tipo de local que sera removido.</param>
         /// <response code="204">Parametros removidos.</response>
-        /// <response code="400">Parametros em uso ou tipo invalido.</response>
+        /// <response code="400">Parametros obrigatorios, parametros em uso ou tipo invalido.</response>
         /// <response code="404">Parametros nao encontrados.</response>
         [HttpDelete("{tipoLocal}")]
         public async Task<IActionResult> Delete(string tipoLocal)

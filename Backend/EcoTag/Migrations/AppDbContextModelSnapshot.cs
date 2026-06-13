@@ -146,6 +146,11 @@ namespace EcoTag.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<string>("TipoCombustivel")
                         .IsRequired()
                         .HasMaxLength(30)

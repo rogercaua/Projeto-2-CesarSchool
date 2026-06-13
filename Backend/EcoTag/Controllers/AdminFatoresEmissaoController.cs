@@ -106,14 +106,14 @@ namespace EcoTag.Controllers
         }
 
         /// <summary>
-        /// Remove um fator de emissao nao utilizado.
+        /// Remove um fator de emissao nao obrigatorio e nao utilizado.
         /// </summary>
         /// <remarks>
-        /// #rota de admin: a exclusao e bloqueada quando ha veiculos usando o combustivel.
+        /// #rota de admin: os fatores padrao do motor de calculo devem ser editados, nao removidos.
         /// </remarks>
         /// <param name="tipoCombustivel">Combustivel que sera removido.</param>
         /// <response code="204">Fator removido.</response>
-        /// <response code="400">Fator em uso ou tipo invalido.</response>
+        /// <response code="400">Fator obrigatorio, fator em uso ou tipo invalido.</response>
         /// <response code="404">Fator nao encontrado.</response>
         [HttpDelete("{tipoCombustivel}")]
         public async Task<IActionResult> Delete(string tipoCombustivel)

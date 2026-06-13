@@ -6,12 +6,12 @@ const state = {
 const routes = {
   "/login": { public: true, render: renderLogin },
   "/cadastro": { public: true, render: renderCadastro },
-  "/dashboard": { protected: true, render: renderDashboard },
-  "/veiculos": { protected: true, render: renderVeiculos },
-  "/passagens": { protected: true, render: renderPassagens },
-  "/simulador": { protected: true, render: renderSimulador },
-  "/ranking": { protected: true, render: renderRanking },
-  "/perfil": { protected: true, render: renderPerfil },
+  "/dashboard": { protected: true, user: true, render: renderDashboard },
+  "/veiculos": { protected: true, user: true, render: renderVeiculos },
+  "/passagens": { protected: true, user: true, render: renderPassagens },
+  "/simulador": { protected: true, user: true, render: renderSimulador },
+  "/ranking": { protected: true, user: true, render: renderRanking },
+  "/perfil": { protected: true, user: true, render: renderPerfil },
   "/admin": { protected: true, admin: true, render: renderAdmin },
   "/sobre": { public: true, render: renderSobre },
 };
@@ -31,7 +31,7 @@ async function initApp() {
   }
 
   if (!window.location.hash) {
-    window.history.replaceState(null, "", getToken() ? "#/dashboard" : "#/login");
+    window.history.replaceState(null, "", getToken() ? `#${defaultRouteForSession()}` : "#/login");
   }
 
   await renderRoute();
@@ -53,8 +53,8 @@ async function renderRoute() {
   if (!routeConfig) {
     renderHeader(route);
     setApp(`
-      ${pageTitle("Tela nao encontrada", "A rota solicitada nao existe no EcoTag.")}
-      <div class="notice warning">Volte para o dashboard ou escolha uma opcao no menu.</div>
+      ${pageTitle("Tela não encontrada", "A rota solicitada não existe no EcoTag.")}
+      <div class="notice warning">Volte para o dashboard ou escolha uma opção no menu.</div>
     `);
     return;
   }
@@ -65,11 +65,17 @@ async function renderRoute() {
     return;
   }
 
+  if (getToken() && isAdmin() && route !== "/admin") {
+    state.flash = { type: "warning", message: "Administradores acessam apenas a área administrativa." };
+    navigate("/admin");
+    return;
+  }
+
   if (routeConfig.admin && !isAdmin()) {
     renderHeader(route);
     setApp(`
-      ${pageTitle("Acesso administrativo", "Esta area e liberada apenas para usuarios administradores.")}
-      <div class="notice warning">Sua conta atual nao possui permissao para alterar premissas ambientais.</div>
+      ${pageTitle("Acesso administrativo", "Esta área é liberada apenas para usuários administradores.")}
+      <div class="notice warning">Sua conta atual não possui permissão para alterar premissas ambientais.</div>
     `);
     return;
   }
@@ -81,13 +87,13 @@ async function renderRoute() {
     await routeConfig.render();
   } catch (error) {
     if (error.status === 401) {
-      state.flash = { type: "warning", message: "Sua sessao expirou. Entre novamente." };
+      state.flash = { type: "warning", message: "Sua sessão expirou. Entre novamente." };
       navigate("/login");
       return;
     }
 
     setApp(`
-      ${pageTitle("Algo saiu do esperado", "Nao foi possivel carregar esta tela agora.")}
+      ${pageTitle("Algo saiu do esperado", "Não foi possível carregar esta tela agora.")}
       <div class="notice error">${escapeHtml(error.message || "Erro inesperado.")}</div>
     `);
   }
@@ -99,14 +105,17 @@ function renderHeader(activeRoute = getRoute()) {
   const user = state.user || getUsuario();
 
   const navItems = logged
-    ? [
+    ? isAdmin()
+      ? [
+          ["/admin", "Admin"],
+        ]
+      : [
         ["/dashboard", "Dashboard"],
-        ["/veiculos", "Veiculos"],
+        ["/veiculos", "Veículos"],
         ["/passagens", "Passagens"],
         ["/simulador", "Simulador"],
         ["/ranking", "Ranking"],
         ["/perfil", "Perfil"],
-        ...(isAdmin() ? [["/admin", "Admin"]] : []),
         ["/sobre", "Sobre"],
       ]
     : [
@@ -116,18 +125,18 @@ function renderHeader(activeRoute = getRoute()) {
       ];
 
   header.innerHTML = `
-    <a class="brand" href="#${logged ? "/dashboard" : "/login"}">
+    <a class="brand" href="#${logged ? defaultRouteForSession() : "/login"}">
       <span class="brand-mark">ET</span>
       <span>EcoTag</span>
     </a>
-    <nav class="nav" aria-label="Navegacao principal">
+    <nav class="nav" aria-label="Navegação principal">
       ${navItems.map(([href, label]) => `
         <a href="#${href}" class="${activeRoute === href ? "active" : ""}">${label}</a>
       `).join("")}
     </nav>
     <div class="actions">
       ${logged ? `
-        <span class="hello">Ola, ${escapeHtml(field(user, "nome", "usuario"))}</span>
+        <span class="hello">Olá, ${escapeHtml(field(user, "nome", "usuário"))}</span>
         <button class="btn-header" type="button" onclick="logout()">Sair</button>
       ` : `
         <a class="btn-header" href="#/login">Entrar</a>
@@ -186,6 +195,10 @@ function isAdmin() {
   return String(field(user, "role", "")).toLowerCase() === "admin";
 }
 
+function defaultRouteForSession() {
+  return isAdmin() ? "/admin" : "/dashboard";
+}
+
 function field(obj, name, fallback = "") {
   if (!obj) return fallback;
   const pascal = name.charAt(0).toUpperCase() + name.slice(1);
@@ -221,8 +234,8 @@ function labelVeiculo(tipo) {
   return {
     carro: "Carro",
     moto: "Moto",
-    caminhao: "Caminhao",
-  }[tipo] || tipo || "Veiculo";
+    caminhao: "Caminhão",
+  }[tipo] || tipo || "Veículo";
 }
 
 function labelCombustivel(tipo) {
@@ -235,7 +248,7 @@ function labelCombustivel(tipo) {
 
 function labelLocal(tipo) {
   return {
-    pedagio: "Pedagio",
+    pedagio: "Pedágio",
     estacionamento: "Estacionamento",
   }[tipo] || tipo || "Local";
 }
@@ -243,7 +256,7 @@ function labelLocal(tipo) {
 function vehicleOptions(veiculos) {
   return veiculos.map((veiculo) => `
     <option value="${field(veiculo, "id")}">
-      ${labelVeiculo(field(veiculo, "tipoVeiculo"))} - ${labelCombustivel(field(veiculo, "tipoCombustivel"))}
+      ${escapeHtml(vehicleSummary(veiculo))}
     </option>
   `).join("");
 }
@@ -256,16 +269,28 @@ function localOptions(locais) {
   `).join("");
 }
 
+function vehicleName(veiculo) {
+  return field(veiculo, "nome") || labelVeiculo(field(veiculo, "tipoVeiculo"));
+}
+
+function vehicleSummary(veiculo) {
+  return `${vehicleName(veiculo)} - ${labelVeiculo(field(veiculo, "tipoVeiculo"))} / ${labelCombustivel(field(veiculo, "tipoCombustivel"))}`;
+}
+
+function passagemVehicleName(passagem) {
+  return field(passagem, "veiculoNome") || labelVeiculo(field(passagem, "tipoVeiculo"));
+}
+
 function authIntro() {
   return `
     <aside class="auth-panel">
       <h1>Mobilidade com impacto visivel.</h1>
       <p>
-        O EcoTag calcula quanto CO2e voce evita usando passagem automatica,
-        organiza seu historico e transforma os resultados em pontos e selos.
+        O EcoTag calcula quanto CO₂e você evita usando passagem automática,
+        organiza seu histórico e transforma os resultados em pontos e selos.
       </p>
       <div class="auth-stats">
-        <div class="auth-stat"><strong>CO2e</strong><span>Indicadores</span></div>
+        <div class="auth-stat"><strong>CO₂e</strong><span>Indicadores</span></div>
         <div class="auth-stat"><strong>Tags</strong><span>Passagens</span></div>
         <div class="auth-stat"><strong>Ranking</strong><span>Mensal</span></div>
       </div>
@@ -275,7 +300,7 @@ function authIntro() {
 
 function renderLogin() {
   if (getToken()) {
-    navigate("/dashboard");
+    navigate(defaultRouteForSession());
     return;
   }
 
@@ -299,7 +324,7 @@ function renderLogin() {
           </div>
         </form>
         <div class="auth-links">
-          Ainda nao tem conta? <a href="#/cadastro">Crie uma agora</a>.
+          Ainda não tem conta? <a href="#/cadastro">Crie uma agora</a>.
         </div>
       </div>
     </section>
@@ -317,7 +342,7 @@ function renderLogin() {
         salvarSessao(authResponse);
         state.user = authResponse.user || await getPerfil();
         state.flash = { type: "success", message: "Login realizado com sucesso." };
-        navigate("/dashboard");
+        navigate(defaultRouteForSession());
       } catch (error) {
         showInlineMessage("loginMessage", "error", error.message || "E-mail ou senha invalidos.");
       }
@@ -327,7 +352,7 @@ function renderLogin() {
 
 function renderCadastro() {
   if (getToken()) {
-    navigate("/dashboard");
+    navigate(defaultRouteForSession());
     return;
   }
 
@@ -337,7 +362,7 @@ function renderCadastro() {
       ${authIntro()}
       <div class="auth-card">
         <h2>Criar conta</h2>
-        <p>Cadastre-se para salvar veiculos, passagens e simulacoes.</p>
+        <p>Cadastre-se para salvar veículos, passagens e simulações.</p>
         <div id="cadastroMessage" class="notice error hidden"></div>
         <form id="cadastroForm">
           <label for="nome">Nome</label>
@@ -373,7 +398,7 @@ function renderCadastro() {
         state.flash = { type: "success", message: "Conta criada. Entre para continuar." };
         navigate("/login");
       } catch (error) {
-        showInlineMessage("cadastroMessage", "error", error.message || "Nao foi possivel criar a conta.");
+        showInlineMessage("cadastroMessage", "error", error.message || "Não foi possível criar a conta.");
       }
     });
   });
@@ -391,25 +416,26 @@ async function renderDashboard() {
   const rankingItens = field(ranking, "itens", []);
   const recentes = [...passagens].slice(0, 4);
   const selos = field(gamificacao, "selos", []);
+  const selosDesbloqueados = selos.filter((selo) => field(selo, "desbloqueado", false) === true);
 
   setApp(`
     ${consumeFlash()}
     ${pageTitle("Dashboard", "Acompanhe os principais indicadores de uso da EcoTag.")}
 
     <section class="metric-grid">
-      <div class="metric-card accent"><strong>${formatKg(field(dashboard, "mesAtualKg"))}</strong><span>CO2e este mes</span></div>
-      <div class="metric-card"><strong>${formatKg(field(dashboard, "anoAtualKg"))}</strong><span>CO2e este ano</span></div>
-      <div class="metric-card"><strong>${formatKg(field(dashboard, "totalHistoricoKg"))}</strong><span>Total historico</span></div>
+      <div class="metric-card accent"><strong>${formatKg(field(dashboard, "mesAtualKg"))}</strong><span>CO₂e este mês</span></div>
+      <div class="metric-card"><strong>${formatKg(field(dashboard, "anoAtualKg"))}</strong><span>CO₂e este ano</span></div>
+      <div class="metric-card"><strong>${formatKg(field(dashboard, "totalHistoricoKg"))}</strong><span>Total histórico</span></div>
       <div class="metric-card"><strong>${field(dashboard, "totalPassagens", 0)}</strong><span>Passagens</span></div>
-      <div class="metric-card"><strong>${field(dashboard, "pontosSustentaveis", 0)}</strong><span>Pontos</span></div>
+      <div class="metric-card"><strong>${field(dashboard, "pontosSustentaveis", 0)}</strong><span>Pontos sustentáveis</span></div>
     </section>
 
     <section class="grid">
       <article class="card span-6">
         <h2>Selos desbloqueados</h2>
-        ${selos.length ? `
+        ${selosDesbloqueados.length ? `
           <div class="tag-list">
-            ${selos.map((selo) => `<span class="tag">${escapeHtml(field(selo, "nome"))}</span>`).join("")}
+            ${selosDesbloqueados.map((selo) => `<span class="tag">${escapeHtml(field(selo, "nome"))}</span>`).join("")}
           </div>
         ` : `<div class="empty">Nenhum selo liberado ainda.</div>`}
       </article>
@@ -418,12 +444,12 @@ async function renderDashboard() {
         <h2>Resumo da conta</h2>
         <ul class="list">
           <li class="list-item">
-            <div class="list-main"><strong>${veiculos.length}</strong><span>Veiculos cadastrados</span></div>
+            <div class="list-main"><strong>${veiculos.length}</strong><span>Veículos cadastrados</span></div>
             <a class="btn btn-secondary btn-small" href="#/veiculos">Gerenciar</a>
           </li>
           <li class="list-item">
             <div class="list-main"><strong>${recentes.length}</strong><span>Passagens recentes exibidas</span></div>
-            <a class="btn btn-secondary btn-small" href="#/passagens">Ver historico</a>
+            <a class="btn btn-secondary btn-small" href="#/passagens">Ver histórico</a>
           </li>
         </ul>
       </article>
@@ -446,18 +472,21 @@ async function renderVeiculos() {
 
   setApp(`
     ${consumeFlash()}
-    ${pageTitle("Veiculos", "Cadastre e mantenha os veiculos usados nas passagens com tag.")}
+    ${pageTitle("Veículos", "Cadastre e mantenha os veículos usados nas passagens com tag.")}
     <section class="section-split">
       <article class="card">
-        <h2 id="vehicleFormTitle">Adicionar veiculo</h2>
+        <h2 id="vehicleFormTitle">Adicionar veículo</h2>
         <div id="vehicleMessage" class="notice error hidden"></div>
         <form id="vehicleForm">
           <input id="vehicleId" type="hidden" />
-          <label for="vehicleTipo">Tipo de veiculo</label>
+          <label for="vehicleNome">Nome do veículo</label>
+          <input id="vehicleNome" type="text" maxlength="100" placeholder="Ex.: Volkswagen Gol, Honda Biz" required />
+
+          <label for="vehicleTipo">Tipo de veículo</label>
           <select id="vehicleTipo" required>
             <option value="carro">Carro</option>
             <option value="moto">Moto</option>
-            <option value="caminhao">Caminhao</option>
+            <option value="caminhao">Caminhão</option>
           </select>
 
           <label for="vehicleFuel">Combustivel</label>
@@ -475,8 +504,8 @@ async function renderVeiculos() {
       </article>
 
       <article class="card">
-        <h2>Seus veiculos</h2>
-        ${veiculos.length ? vehicleListHtml(veiculos) : `<div class="empty">Nenhum veiculo cadastrado.</div>`}
+        <h2>Seus veículos</h2>
+        ${veiculos.length ? vehicleListHtml(veiculos) : `<div class="empty">Nenhum veículo cadastrado.</div>`}
       </article>
     </section>
   `);
@@ -489,16 +518,17 @@ function vehicleListHtml(veiculos) {
     <ul class="list" id="vehicleList">
       ${veiculos.map((veiculo) => {
         const id = field(veiculo, "id");
+        const nome = field(veiculo, "nome");
         const tipo = field(veiculo, "tipoVeiculo");
         const fuel = field(veiculo, "tipoCombustivel");
         return `
           <li class="list-item">
             <div class="list-main">
-              <strong>${labelVeiculo(tipo)}</strong>
-              <span>${labelCombustivel(fuel)}</span>
+              <strong>${escapeHtml(vehicleName(veiculo))}</strong>
+              <span>${labelVeiculo(tipo)} / ${labelCombustivel(fuel)}</span>
             </div>
             <div class="item-actions">
-              <button class="btn-secondary btn-small" type="button" data-action="edit" data-id="${id}" data-tipo="${escapeHtml(tipo)}" data-fuel="${escapeHtml(fuel)}">Editar</button>
+              <button class="btn-secondary btn-small" type="button" data-action="edit" data-id="${id}" data-nome="${escapeHtml(nome)}" data-tipo="${escapeHtml(tipo)}" data-fuel="${escapeHtml(fuel)}">Editar</button>
               <button class="btn-danger btn-small" type="button" data-action="delete" data-id="${id}">Remover</button>
             </div>
           </li>
@@ -516,17 +546,18 @@ function bindVehicleEvents() {
     event.preventDefault();
     const button = document.getElementById("vehicleSubmit");
     const id = document.getElementById("vehicleId").value;
+    const nome = document.getElementById("vehicleNome").value.trim();
     const tipo = document.getElementById("vehicleTipo").value;
     const fuel = document.getElementById("vehicleFuel").value;
 
     await runWithButton(button, "Salvando...", async () => {
       try {
         if (id) {
-          await atualizarVeiculo(Number(id), tipo, fuel);
-          state.flash = { type: "success", message: "Veiculo atualizado." };
+          await atualizarVeiculo(Number(id), nome, tipo, fuel);
+          state.flash = { type: "success", message: "Veículo atualizado." };
         } else {
-          await adicionarVeiculo(tipo, fuel);
-          state.flash = { type: "success", message: "Veiculo adicionado." };
+          await adicionarVeiculo(nome, tipo, fuel);
+          state.flash = { type: "success", message: "Veículo adicionado." };
         }
         await renderVeiculos();
       } catch (error) {
@@ -537,7 +568,7 @@ function bindVehicleEvents() {
 
   cancel.addEventListener("click", () => {
     document.getElementById("vehicleId").value = "";
-    document.getElementById("vehicleFormTitle").textContent = "Adicionar veiculo";
+    document.getElementById("vehicleFormTitle").textContent = "Adicionar veículo";
     document.getElementById("vehicleSubmit").textContent = "Adicionar";
     cancel.classList.add("hidden");
     form.reset();
@@ -549,19 +580,20 @@ function bindVehicleEvents() {
 
     if (button.dataset.action === "edit") {
       document.getElementById("vehicleId").value = button.dataset.id;
+      document.getElementById("vehicleNome").value = button.dataset.nome;
       document.getElementById("vehicleTipo").value = button.dataset.tipo;
       document.getElementById("vehicleFuel").value = button.dataset.fuel;
-      document.getElementById("vehicleFormTitle").textContent = "Editar veiculo";
+      document.getElementById("vehicleFormTitle").textContent = "Editar veículo";
       document.getElementById("vehicleSubmit").textContent = "Salvar";
       cancel.classList.remove("hidden");
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
-    if (button.dataset.action === "delete" && confirm("Remover este veiculo?")) {
+    if (button.dataset.action === "delete" && confirm("Remover este veículo?")) {
       await runWithButton(button, "Removendo...", async () => {
         try {
           await deletarVeiculo(Number(button.dataset.id));
-          state.flash = { type: "success", message: "Veiculo removido." };
+          state.flash = { type: "success", message: "Veículo removido." };
           await renderVeiculos();
         } catch (error) {
           state.flash = { type: "error", message: error.message };
@@ -583,14 +615,14 @@ async function renderPassagens() {
 
   setApp(`
     ${consumeFlash()}
-    ${pageTitle("Passagens", "Registre usos reais de tag e consulte o historico calculado pelo backend.")}
-    ${formDisabled ? `<div class="notice warning">Cadastre um veiculo e confirme que existem locais disponiveis antes de registrar passagens.</div>` : ""}
+    ${pageTitle("Passagens", "Registre usos reais de tag e consulte o histórico calculado pelo backend.")}
+    ${formDisabled ? `<div class="notice warning">Cadastre um veículo e confirme que existem locais disponíveis antes de registrar passagens.</div>` : ""}
     <section class="grid">
       <article class="card span-4">
         <h2>Registrar passagem</h2>
         <div id="passagemMessage" class="notice error hidden"></div>
         <form id="passagemForm">
-          <label for="passagemVeiculo">Veiculo</label>
+          <label for="passagemVeiculo">Veículo</label>
           <select id="passagemVeiculo" ${formDisabled ? "disabled" : ""} required>
             <option value="">Selecione</option>
             ${vehicleOptions(veiculos)}
@@ -609,7 +641,7 @@ async function renderPassagens() {
       </article>
 
       <article class="card span-8">
-        <h2>Historico</h2>
+        <h2>Histórico</h2>
         ${passagens.length ? passagensTableHtml(passagens) : `<div class="empty">Nenhuma passagem registrada.</div>`}
       </article>
     </section>
@@ -626,7 +658,7 @@ async function renderPassagens() {
         const resultado = await registrarPassagem(veiculoId, localUsoId);
         state.flash = {
           type: "success",
-          message: `Passagem registrada. CO2e evitado: ${formatKg(field(resultado, "co2EvitadoKg"), 3)}.`,
+          message: `Passagem registrada. CO₂e evitado: ${formatKg(field(resultado, "co2EvitadoKg"), 3)}.`,
         };
         await renderPassagens();
       } catch (error) {
@@ -643,16 +675,16 @@ function passagensTableHtml(passagens) {
         <thead>
           <tr>
             <th>Data</th>
-            <th>Veiculo</th>
+            <th>Veículo</th>
             <th>Local</th>
-            <th>CO2e evitado</th>
+            <th>CO₂e evitado</th>
           </tr>
         </thead>
         <tbody>
           ${passagens.map((passagem) => `
             <tr>
               <td>${formatDate(field(passagem, "dataHora"))}</td>
-              <td>${labelVeiculo(field(passagem, "tipoVeiculo"))} / ${labelCombustivel(field(passagem, "tipoCombustivel"))}</td>
+              <td>${escapeHtml(passagemVehicleName(passagem))} <span class="pill">${labelVeiculo(field(passagem, "tipoVeiculo"))} / ${labelCombustivel(field(passagem, "tipoCombustivel"))}</span></td>
               <td>${escapeHtml(field(passagem, "localNome"))} <span class="pill">${labelLocal(field(passagem, "tipoLocal"))}</span></td>
               <td><strong>${formatKg(field(passagem, "co2EvitadoKg"), 3)}</strong></td>
             </tr>
@@ -670,7 +702,7 @@ function passagensListHtml(passagens) {
         <li class="list-item">
           <div class="list-main">
             <strong>${escapeHtml(field(passagem, "localNome")) || labelLocal(field(passagem, "tipoLocal"))}</strong>
-            <span>${formatDate(field(passagem, "dataHora"))}</span>
+            <span>${escapeHtml(passagemVehicleName(passagem))} - ${formatDate(field(passagem, "dataHora"))}</span>
           </div>
           <span class="pill">${formatKg(field(passagem, "co2EvitadoKg"), 3)}</span>
         </li>
@@ -685,15 +717,15 @@ async function renderSimulador() {
 
   setApp(`
     ${consumeFlash()}
-    ${pageTitle("Simulador", "Estime o impacto de uma rotina de passagens sem alterar o historico.")}
-    ${formDisabled ? `<div class="notice warning">Cadastre um veiculo e use um local disponivel para simular.</div>` : ""}
+    ${pageTitle("Simulador", "Estime o impacto de uma rotina de passagens sem alterar o histórico.")}
+    ${formDisabled ? `<div class="notice warning">Cadastre um veículo e use um local disponível para simular.</div>` : ""}
     <section class="grid">
       <article class="card span-6">
-        <h2>Cenario</h2>
+        <h2>Cenário</h2>
         <div id="simuladorMessage" class="notice error hidden"></div>
         <form id="simuladorForm">
           <div class="form-grid">
-            <label>Veiculo
+            <label>Veículo
               <select id="simVeiculo" ${formDisabled ? "disabled" : ""} required>
                 <option value="">Selecione</option>
                 ${vehicleOptions(veiculos)}
@@ -724,7 +756,7 @@ async function renderSimulador() {
 
       <article class="card span-6">
         <h2>Resultado</h2>
-        <div id="simuladorResultado" class="empty">Preencha o cenario para ver a estimativa.</div>
+        <div id="simuladorResultado" class="empty">Preencha o cenário para ver a estimativa.</div>
       </article>
     </section>
   `);
@@ -761,9 +793,9 @@ async function renderRanking() {
 
   setApp(`
     ${consumeFlash()}
-    ${pageTitle("Ranking mensal", "Compare os pontos sustentaveis acumulados no mes atual.")}
+    ${pageTitle("Ranking mensal", "Compare os pontos sustentáveis acumulados no mês atual.")}
     <article class="card span-12">
-      ${itens.length ? rankingTableHtml(itens) : `<div class="empty">Ainda nao ha dados suficientes para o ranking.</div>`}
+      ${itens.length ? rankingTableHtml(itens) : `<div class="empty">Ainda não há dados suficientes para o ranking.</div>`}
     </article>
   `);
 }
@@ -774,7 +806,7 @@ function rankingListHtml(itens) {
       ${itens.map((item, index) => `
         <li class="list-item">
           <div class="list-main">
-            <strong>${index + 1}. ${escapeHtml(field(item, "nomeUsuario", "Usuario"))}</strong>
+            <strong>${index + 1}. ${escapeHtml(field(item, "nome", "Usuário"))}</strong>
             <span>${formatKg(field(item, "co2EvitadoKg"))} evitados</span>
           </div>
           <span class="pill pill-amber">${field(item, "pontosSustentaveis", 0)} pts</span>
@@ -790,9 +822,9 @@ function rankingTableHtml(itens) {
       <table class="table">
         <thead>
           <tr>
-            <th>Posicao</th>
-            <th>Usuario</th>
-            <th>CO2e evitado</th>
+            <th>Posição</th>
+            <th>Usuário</th>
+            <th>CO₂e evitado</th>
             <th>Pontos</th>
           </tr>
         </thead>
@@ -800,7 +832,7 @@ function rankingTableHtml(itens) {
           ${itens.map((item, index) => `
             <tr>
               <td class="rank-pos">${index + 1}</td>
-              <td>${escapeHtml(field(item, "nomeUsuario", "Usuario"))}</td>
+              <td>${escapeHtml(field(item, "nome", "Usuário"))}</td>
               <td>${formatKg(field(item, "co2EvitadoKg"))}</td>
               <td><span class="pill pill-amber">${field(item, "pontosSustentaveis", 0)} pts</span></td>
             </tr>
@@ -843,7 +875,7 @@ async function renderPerfil() {
             <div class="list-main"><strong>${escapeHtml(field(user, "email"))}</strong><span>E-mail de acesso</span></div>
           </li>
           <li class="list-item">
-            <div class="list-main"><strong>${escapeHtml(field(user, "role", "user"))}</strong><span>Perfil de permissao</span></div>
+            <div class="list-main"><strong>${escapeHtml(field(user, "role", "user"))}</strong><span>Perfil de permissão</span></div>
           </li>
           <li class="list-item">
             <div class="list-main"><strong>${formatDate(field(user, "createdAt"))}</strong><span>Conta criada em</span></div>
@@ -872,7 +904,8 @@ async function renderPerfil() {
 }
 
 async function renderAdmin() {
-  const [locais, fatores, parametros] = await Promise.all([
+  const [usuarios, locais, fatores, parametros] = await Promise.all([
+    adminListarUsuarios(),
     adminListarLocais(),
     adminListarFatores(),
     adminListarParametros(),
@@ -880,8 +913,9 @@ async function renderAdmin() {
 
   setApp(`
     ${consumeFlash()}
-    ${pageTitle("Administracao", "Mantenha locais de uso e premissas ambientais usadas nos calculos.")}
+    ${pageTitle("Administração", "Mantenha usuários, locais de uso e premissas ambientais usadas nos cálculos.")}
     <section class="admin-stack">
+      ${adminUsuariosHtml(usuarios)}
       ${adminLocaisHtml(locais)}
       ${adminFatoresHtml(fatores)}
       ${adminParametrosHtml(parametros)}
@@ -889,6 +923,68 @@ async function renderAdmin() {
   `);
 
   bindAdminEvents();
+}
+
+function adminUsuariosHtml(usuarios) {
+  const currentUserId = Number(field(state.user || getUsuario(), "id", 0));
+
+  return `
+    <article class="card admin-card">
+      <h2>Usuários</h2>
+      <p class="muted">Edite nome e e-mail de usuários comuns. Excluir um usuário remove também veículos e passagens ligados a ele.</p>
+      <div id="adminUserMessage" class="notice error hidden"></div>
+      ${usuarios.length ? `
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Criado em</th><th>Ações</th></tr></thead>
+            <tbody>
+              ${usuarios.map((usuario) => {
+                const id = Number(field(usuario, "id"));
+                const isCurrent = id === currentUserId;
+                const nome = field(usuario, "nome", "Usuário");
+                const email = field(usuario, "email", "-");
+                const role = String(field(usuario, "role", "user")).toLowerCase();
+                const canEdit = role === "user";
+                return `
+                  <tr>
+                    <td>${escapeHtml(nome)}</td>
+                    <td>${escapeHtml(email)}</td>
+                    <td><span class="pill ${role === "admin" ? "pill-blue" : ""}">${escapeHtml(role)}</span></td>
+                    <td>${formatDate(field(usuario, "createdAt"))}</td>
+                    <td>
+                      <div class="item-actions">
+                        ${canEdit ? `
+                          <button class="btn-secondary btn-small" type="button" data-admin="edit-user" data-id="${id}" data-nome="${escapeHtml(nome)}" data-email="${escapeHtml(email)}">Editar</button>
+                        ` : ""}
+                        ${isCurrent ? `
+                          <span class="pill">Usuário atual</span>
+                        ` : `
+                          <button class="btn-danger btn-small" type="button" data-admin="delete-user" data-id="${id}" data-nome="${escapeHtml(nome)}">Excluir</button>
+                        `}
+                      </div>
+                    </td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      ` : `<div class="empty">Nenhum usuário cadastrado.</div>`}
+      <form id="adminUserForm" class="admin-edit-panel hidden">
+        <input id="adminUserId" type="hidden" />
+        <label>Nome
+          <input id="adminUserNome" type="text" maxlength="100" required />
+        </label>
+        <label>E-mail
+          <input id="adminUserEmail" type="email" maxlength="150" required />
+        </label>
+        <div class="form-actions">
+          <button id="adminUserSubmit" type="submit">Salvar usuário</button>
+          <button id="adminUserCancel" class="btn-ghost" type="button">Cancelar</button>
+        </div>
+      </form>
+    </article>
+  `;
 }
 
 function adminLocaisHtml(locais) {
@@ -904,7 +1000,7 @@ function adminLocaisHtml(locais) {
           </label>
           <label>Tipo
             <select id="adminLocalTipo" required>
-              <option value="pedagio">Pedagio</option>
+              <option value="pedagio">Pedágio</option>
               <option value="estacionamento">Estacionamento</option>
             </select>
           </label>
@@ -916,7 +1012,7 @@ function adminLocaisHtml(locais) {
         ${locais.length ? `
           <div class="table-wrap">
             <table class="table">
-              <thead><tr><th>Nome</th><th>Tipo</th><th>Acoes</th></tr></thead>
+              <thead><tr><th>Nome</th><th>Tipo</th><th>Ações</th></tr></thead>
               <tbody>
                 ${locais.map((local) => `
                   <tr>
@@ -942,62 +1038,60 @@ function adminLocaisHtml(locais) {
 function adminFatoresHtml(fatores) {
   return `
     <article class="card admin-card">
-      <h2>Fatores de emissao</h2>
+      <h2>Fatores de emissão</h2>
       <div id="adminFatorMessage" class="notice error hidden"></div>
-      <div class="section-split">
-        <form id="adminFatorForm">
-          <input id="adminFatorOriginal" type="hidden" />
-          <label>Combustivel
-            <input id="adminFatorTipo" type="text" placeholder="gasolina, etanol ou diesel" required />
+      <p class="muted">Gasolina, etanol e diesel são premissas fixas do cálculo. Edite apenas os valores.</p>
+      ${fatores.length ? `
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th>Combustível</th><th>Fator</th><th>Marcha lenta</th><th>Aceleração</th><th>Editar</th></tr></thead>
+            <tbody>
+              ${fatores.map((fator) => {
+                const tipo = field(fator, "tipoCombustivel");
+                return `
+                  <tr>
+                    <td>${labelCombustivel(tipo)}</td>
+                    <td>${formatNumber(field(fator, "fatorEmissao"), 6)}</td>
+                    <td>${formatNumber(field(fator, "consumoMarchaLenta"), 6)}</td>
+                    <td>${formatNumber(field(fator, "consumoAdicionalAceleracao"), 6)}</td>
+                    <td>
+                      <div class="item-actions">
+                        <button class="btn-secondary btn-small" type="button"
+                          data-admin="edit-fator"
+                          data-tipo="${escapeHtml(tipo)}"
+                          data-emissao="${field(fator, "fatorEmissao")}"
+                          data-marcha="${field(fator, "consumoMarchaLenta")}"
+                          data-aceleracao="${field(fator, "consumoAdicionalAceleracao")}">Editar</button>
+                      </div>
+                    </td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      ` : `<div class="empty">Nenhum fator cadastrado.</div>`}
+      <form id="adminFatorForm" class="admin-edit-panel hidden">
+        <input id="adminFatorOriginal" type="hidden" />
+        <label>Combustível
+          <input id="adminFatorTipo" type="text" readonly required />
+        </label>
+        <div class="form-grid">
+          <label>Fator emissão
+            <input id="adminFatorEmissao" type="number" min="0.000001" step="0.000001" required />
           </label>
-          <div class="form-grid">
-            <label>Fator emissao
-              <input id="adminFatorEmissao" type="number" min="0.000001" step="0.000001" required />
-            </label>
-            <label>Consumo marcha lenta
-              <input id="adminFatorMarcha" type="number" min="0" step="0.000001" required />
-            </label>
-            <label class="full">Consumo aceleracao
-              <input id="adminFatorAceleracao" type="number" min="0" step="0.000001" required />
-            </label>
-          </div>
-          <div class="form-actions">
-            <button id="adminFatorSubmit" type="submit">Salvar fator</button>
-            <button id="adminFatorCancel" class="btn-ghost hidden" type="button">Cancelar</button>
-          </div>
-        </form>
-        ${fatores.length ? `
-          <div class="table-wrap">
-            <table class="table">
-              <thead><tr><th>Combustivel</th><th>Fator</th><th>Marcha lenta</th><th>Aceleracao</th><th>Acoes</th></tr></thead>
-              <tbody>
-                ${fatores.map((fator) => {
-                  const tipo = field(fator, "tipoCombustivel");
-                  return `
-                    <tr>
-                      <td>${labelCombustivel(tipo)}</td>
-                      <td>${formatNumber(field(fator, "fatorEmissao"), 6)}</td>
-                      <td>${formatNumber(field(fator, "consumoMarchaLenta"), 6)}</td>
-                      <td>${formatNumber(field(fator, "consumoAdicionalAceleracao"), 6)}</td>
-                      <td>
-                        <div class="item-actions">
-                          <button class="btn-secondary btn-small" type="button"
-                            data-admin="edit-fator"
-                            data-tipo="${escapeHtml(tipo)}"
-                            data-emissao="${field(fator, "fatorEmissao")}"
-                            data-marcha="${field(fator, "consumoMarchaLenta")}"
-                            data-aceleracao="${field(fator, "consumoAdicionalAceleracao")}">Editar</button>
-                          <button class="btn-danger btn-small" type="button" data-admin="delete-fator" data-tipo="${escapeHtml(tipo)}">Remover</button>
-                        </div>
-                      </td>
-                    </tr>
-                  `;
-                }).join("")}
-              </tbody>
-            </table>
-          </div>
-        ` : `<div class="empty">Nenhum fator cadastrado.</div>`}
-      </div>
+          <label>Consumo marcha lenta
+            <input id="adminFatorMarcha" type="number" min="0" step="0.000001" required />
+          </label>
+          <label class="full">Consumo aceleração
+            <input id="adminFatorAceleracao" type="number" min="0" step="0.000001" required />
+          </label>
+        </div>
+        <div class="form-actions">
+          <button id="adminFatorSubmit" type="submit">Salvar alterações</button>
+          <button id="adminFatorCancel" class="btn-ghost" type="button">Cancelar</button>
+        </div>
+      </form>
     </article>
   `;
 }
@@ -1005,70 +1099,69 @@ function adminFatoresHtml(fatores) {
 function adminParametrosHtml(parametros) {
   return `
     <article class="card admin-card">
-      <h2>Parametros de cenario sem tag</h2>
+      <h2>Parâmetros de cenário sem tag</h2>
       <div id="adminParametroMessage" class="notice error hidden"></div>
-      <div class="section-split">
-        <form id="adminParametroForm">
-          <input id="adminParametroOriginal" type="hidden" />
-          <label>Tipo de local
-            <select id="adminParametroTipo" required>
-              <option value="pedagio">Pedagio</option>
-              <option value="estacionamento">Estacionamento</option>
-            </select>
+      <p class="muted">Pedágio e estacionamento são os cenários fixos do comparativo. Edite somente fila, espera e ticket.</p>
+      ${parametros.length ? `
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th>Tipo</th><th>Fila</th><th>Espera</th><th>Ticket</th><th>Editar</th></tr></thead>
+            <tbody>
+              ${parametros.map((parametro) => {
+                const tipo = field(parametro, "tipoLocal");
+                return `
+                  <tr>
+                    <td><span class="pill">${labelLocal(tipo)}</span></td>
+                    <td>${field(parametro, "tempoMedioFilaMinutos", 0)} min</td>
+                    <td>${field(parametro, "tempoEsperaCabineSegundos", 0)} s</td>
+                    <td>${formatKg(field(parametro, "emissaoTicketPapelKg"), 6)}</td>
+                    <td>
+                      <div class="item-actions">
+                        <button class="btn-secondary btn-small" type="button"
+                          data-admin="edit-parametro"
+                          data-tipo="${escapeHtml(tipo)}"
+                          data-fila="${field(parametro, "tempoMedioFilaMinutos", 0)}"
+                          data-espera="${field(parametro, "tempoEsperaCabineSegundos", 0)}"
+                          data-ticket="${field(parametro, "emissaoTicketPapelKg", 0)}">Editar</button>
+                      </div>
+                    </td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      ` : `<div class="empty">Nenhum parâmetro cadastrado.</div>`}
+      <form id="adminParametroForm" class="admin-edit-panel hidden">
+        <input id="adminParametroOriginal" type="hidden" />
+        <label>Tipo de local
+          <select id="adminParametroTipo" disabled required>
+            <option value="pedagio">Pedágio</option>
+            <option value="estacionamento">Estacionamento</option>
+          </select>
+        </label>
+        <div class="form-grid">
+          <label>Fila média (min)
+            <input id="adminParametroFila" type="number" min="0" max="240" step="1" required />
           </label>
-          <div class="form-grid">
-            <label>Fila media (min)
-              <input id="adminParametroFila" type="number" min="0" max="240" step="1" required />
-            </label>
-            <label>Espera cabine (s)
-              <input id="adminParametroEspera" type="number" min="0" max="3600" step="1" required />
-            </label>
-            <label class="full">Emissao ticket papel (kg)
-              <input id="adminParametroTicket" type="number" min="0" step="0.000001" required />
-            </label>
-          </div>
-          <div class="form-actions">
-            <button id="adminParametroSubmit" type="submit">Salvar parametro</button>
-            <button id="adminParametroCancel" class="btn-ghost hidden" type="button">Cancelar</button>
-          </div>
-        </form>
-        ${parametros.length ? `
-          <div class="table-wrap">
-            <table class="table">
-              <thead><tr><th>Tipo</th><th>Fila</th><th>Espera</th><th>Ticket</th><th>Acoes</th></tr></thead>
-              <tbody>
-                ${parametros.map((parametro) => {
-                  const tipo = field(parametro, "tipoLocal");
-                  return `
-                    <tr>
-                      <td><span class="pill">${labelLocal(tipo)}</span></td>
-                      <td>${field(parametro, "tempoMedioFilaMinutos", 0)} min</td>
-                      <td>${field(parametro, "tempoEsperaCabineSegundos", 0)} s</td>
-                      <td>${formatKg(field(parametro, "emissaoTicketPapelKg"), 6)}</td>
-                      <td>
-                        <div class="item-actions">
-                          <button class="btn-secondary btn-small" type="button"
-                            data-admin="edit-parametro"
-                            data-tipo="${escapeHtml(tipo)}"
-                            data-fila="${field(parametro, "tempoMedioFilaMinutos", 0)}"
-                            data-espera="${field(parametro, "tempoEsperaCabineSegundos", 0)}"
-                            data-ticket="${field(parametro, "emissaoTicketPapelKg", 0)}">Editar</button>
-                          <button class="btn-danger btn-small" type="button" data-admin="delete-parametro" data-tipo="${escapeHtml(tipo)}">Remover</button>
-                        </div>
-                      </td>
-                    </tr>
-                  `;
-                }).join("")}
-              </tbody>
-            </table>
-          </div>
-        ` : `<div class="empty">Nenhum parametro cadastrado.</div>`}
-      </div>
+          <label>Espera cabine (s)
+            <input id="adminParametroEspera" type="number" min="0" max="3600" step="1" required />
+          </label>
+          <label class="full">Emissão ticket papel (kg)
+            <input id="adminParametroTicket" type="number" min="0" step="0.000001" required />
+          </label>
+        </div>
+        <div class="form-actions">
+          <button id="adminParametroSubmit" type="submit">Salvar alterações</button>
+          <button id="adminParametroCancel" class="btn-ghost" type="button">Cancelar</button>
+        </div>
+      </form>
     </article>
   `;
 }
 
 function bindAdminEvents() {
+  bindAdminUserEvents();
   bindAdminLocalEvents();
   bindAdminFatorEvents();
   bindAdminParametroEvents();
@@ -1078,6 +1171,19 @@ function bindAdminEvents() {
     if (!button) return;
 
     const action = button.dataset.admin;
+
+    if (action === "delete-user" && confirm(`Excluir o usuário ${button.dataset.nome}? Todos os veículos e passagens relacionados serão removidos.`)) {
+      await adminDelete(button, () => adminExcluirUsuario(Number(button.dataset.id)), "Usuário removido.");
+    }
+
+    if (action === "edit-user") {
+      const form = document.getElementById("adminUserForm");
+      document.getElementById("adminUserId").value = button.dataset.id;
+      document.getElementById("adminUserNome").value = button.dataset.nome;
+      document.getElementById("adminUserEmail").value = button.dataset.email;
+      form.classList.remove("hidden");
+      form.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
 
     if (action === "edit-local") {
       document.getElementById("adminLocalId").value = button.dataset.id;
@@ -1091,30 +1197,58 @@ function bindAdminEvents() {
     }
 
     if (action === "edit-fator") {
+      const form = document.getElementById("adminFatorForm");
       document.getElementById("adminFatorOriginal").value = button.dataset.tipo;
       document.getElementById("adminFatorTipo").value = button.dataset.tipo;
       document.getElementById("adminFatorEmissao").value = button.dataset.emissao;
       document.getElementById("adminFatorMarcha").value = button.dataset.marcha;
       document.getElementById("adminFatorAceleracao").value = button.dataset.aceleracao;
-      document.getElementById("adminFatorCancel").classList.remove("hidden");
-    }
-
-    if (action === "delete-fator" && confirm("Remover este fator de emissao?")) {
-      await adminDelete(button, () => adminExcluirFator(button.dataset.tipo), "Fator removido.");
+      form.classList.remove("hidden");
+      form.scrollIntoView({ behavior: "smooth", block: "center" });
     }
 
     if (action === "edit-parametro") {
+      const form = document.getElementById("adminParametroForm");
       document.getElementById("adminParametroOriginal").value = button.dataset.tipo;
       document.getElementById("adminParametroTipo").value = button.dataset.tipo;
       document.getElementById("adminParametroFila").value = button.dataset.fila;
       document.getElementById("adminParametroEspera").value = button.dataset.espera;
       document.getElementById("adminParametroTicket").value = button.dataset.ticket;
-      document.getElementById("adminParametroCancel").classList.remove("hidden");
+      form.classList.remove("hidden");
+      form.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  });
+}
+
+function bindAdminUserEvents() {
+  document.getElementById("adminUserForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const button = document.getElementById("adminUserSubmit");
+    const id = document.getElementById("adminUserId").value;
+    const nome = document.getElementById("adminUserNome").value.trim();
+    const email = document.getElementById("adminUserEmail").value.trim();
+
+    if (!id) {
+      showInlineMessage("adminUserMessage", "error", "Escolha um usuário comum para editar.");
+      return;
     }
 
-    if (action === "delete-parametro" && confirm("Remover estes parametros?")) {
-      await adminDelete(button, () => adminExcluirParametro(button.dataset.tipo), "Parametro removido.");
-    }
+    await runWithButton(button, "Salvando...", async () => {
+      try {
+        await adminAtualizarUsuario(Number(id), nome, email);
+        state.flash = { type: "success", message: "Usuário atualizado." };
+        await renderAdmin();
+      } catch (error) {
+        showInlineMessage("adminUserMessage", "error", error.message);
+      }
+    });
+  });
+
+  document.getElementById("adminUserCancel").addEventListener("click", () => {
+    const form = document.getElementById("adminUserForm");
+    form.reset();
+    document.getElementById("adminUserId").value = "";
+    form.classList.add("hidden");
   });
 }
 
@@ -1150,6 +1284,12 @@ function bindAdminFatorEvents() {
     event.preventDefault();
     const button = document.getElementById("adminFatorSubmit");
     const tipoOriginal = document.getElementById("adminFatorOriginal").value;
+
+    if (!tipoOriginal) {
+      showInlineMessage("adminFatorMessage", "error", "Escolha um fator para editar.");
+      return;
+    }
+
     const payload = {
       tipoCombustivel: document.getElementById("adminFatorTipo").value.trim(),
       fatorEmissao: Number(document.getElementById("adminFatorEmissao").value),
@@ -1169,9 +1309,10 @@ function bindAdminFatorEvents() {
   });
 
   document.getElementById("adminFatorCancel").addEventListener("click", () => {
-    document.getElementById("adminFatorForm").reset();
+    const form = document.getElementById("adminFatorForm");
+    form.reset();
     document.getElementById("adminFatorOriginal").value = "";
-    document.getElementById("adminFatorCancel").classList.add("hidden");
+    form.classList.add("hidden");
   });
 }
 
@@ -1180,6 +1321,12 @@ function bindAdminParametroEvents() {
     event.preventDefault();
     const button = document.getElementById("adminParametroSubmit");
     const tipoOriginal = document.getElementById("adminParametroOriginal").value;
+
+    if (!tipoOriginal) {
+      showInlineMessage("adminParametroMessage", "error", "Escolha um parâmetro para editar.");
+      return;
+    }
+
     const payload = {
       tipoLocal: document.getElementById("adminParametroTipo").value,
       tempoMedioFilaMinutos: Number(document.getElementById("adminParametroFila").value),
@@ -1190,7 +1337,7 @@ function bindAdminParametroEvents() {
     await runWithButton(button, "Salvando...", async () => {
       try {
         await adminSalvarParametro(tipoOriginal, payload);
-        state.flash = { type: "success", message: "Parametro salvo." };
+        state.flash = { type: "success", message: "Parâmetro salvo." };
         await renderAdmin();
       } catch (error) {
         showInlineMessage("adminParametroMessage", "error", error.message);
@@ -1199,9 +1346,10 @@ function bindAdminParametroEvents() {
   });
 
   document.getElementById("adminParametroCancel").addEventListener("click", () => {
-    document.getElementById("adminParametroForm").reset();
+    const form = document.getElementById("adminParametroForm");
+    form.reset();
     document.getElementById("adminParametroOriginal").value = "";
-    document.getElementById("adminParametroCancel").classList.add("hidden");
+    form.classList.add("hidden");
   });
 }
 
@@ -1220,26 +1368,113 @@ async function adminDelete(button, action, successMessage) {
 
 function renderSobre() {
   setApp(`
-    ${pageTitle("Sobre o EcoTag", "Uma aplicacao para demonstrar impacto ambiental evitado por uso de tag automatica.")}
+    ${pageTitle("Sobre o EcoTag", "Uma aplicação para demonstrar impacto ambiental evitado por uso de tag automática.")}
     <section class="about-bands">
       <article class="about-band">
         <div class="about-text">
           <h2>O que o sistema calcula</h2>
           <p>
-            O EcoTag compara a passagem automatica com um cenario sem tag, considerando fila,
-            espera em cabine, marcha lenta, aceleracao e emissao associada ao ticket em papel.
+            O EcoTag compara a passagem automática com um cenário sem tag, considerando fila,
+            espera em cabine, marcha lenta, aceleração e emissão associada ao ticket em papel.
           </p>
         </div>
-        <div class="about-visual" aria-hidden="true"></div>
+        <div class="about-visual">
+          <div class="about-panel">
+            <span class="about-panel-label">Comparação</span>
+            <h3>Sem tag x com tag</h3>
+            <ul class="about-checklist">
+              <li><strong>Fila</strong><span>tempo parado evitado</span></li>
+              <li><strong>Cabine</strong><span>espera reduzida</span></li>
+              <li><strong>Retomada</strong><span>menos aceleração</span></li>
+              <li><strong>Ticket</strong><span>papel não emitido</span></li>
+            </ul>
+          </div>
+        </div>
       </article>
 
       <article class="about-band">
-        <div class="about-visual" aria-hidden="true"></div>
+        <div class="about-visual">
+          <div class="about-panel">
+            <span class="about-panel-label">Fluxo</span>
+            <h3>Da passagem ao ranking</h3>
+            <div class="about-flow">
+              <span>Passagem</span>
+              <span>Cálculo</span>
+              <span>Pontos</span>
+              <span>Selos</span>
+            </div>
+          </div>
+        </div>
         <div class="about-text">
-          <h2>Como os dados viram experiencia</h2>
+          <h2>Como os dados viram experiência</h2>
           <p>
-            Cada passagem alimenta o dashboard, o historico, os pontos sustentaveis,
+            Cada passagem alimenta o dashboard, o histórico, os pontos sustentáveis,
             os selos e o ranking mensal, criando uma trilha clara do impacto acumulado.
+          </p>
+        </div>
+      </article>
+
+      <article class="about-band">
+        <div class="about-text">
+          <h2>Como o CO₂e é calculado</h2>
+          <p>
+            O cálculo estima quanto combustível deixaria de ser gasto em uma parada sem tag.
+            Primeiro o sistema soma o tempo médio de fila e o tempo de cabine, converte esse
+            tempo para horas e calcula os litros evitados em marcha lenta. Depois soma um
+            consumo adicional de retomada/aceleração.
+          </p>
+          <p>
+            Fórmula usada: litros evitados = consumo em marcha lenta × tempo parado + consumo
+            adicional de aceleração. O resultado em litros é multiplicado pelo fator de emissão
+            do combustível e recebe a emissão evitada de ticket em papel.
+          </p>
+        </div>
+        <div class="about-visual">
+          <div class="about-panel">
+            <span class="about-panel-label">Fórmula</span>
+            <h3>CO₂e evitado</h3>
+            <div class="about-formula">
+              <span>litros evitados</span>
+              <strong>×</strong>
+              <span>fator do combustível</span>
+              <strong>+</strong>
+              <span>ticket evitado</span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="about-band">
+        <div class="about-visual">
+          <div class="about-panel">
+            <span class="about-panel-label">Premissas atuais</span>
+            <h3>Fatores iniciais</h3>
+            <div class="about-kpis">
+              <div><strong>2,31</strong><span>gasolina kg CO₂e/L</span></div>
+              <div><strong>1,53</strong><span>etanol kg CO₂e/L</span></div>
+              <div><strong>2,68</strong><span>diesel kg CO₂e/L</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="about-text">
+          <h2>De onde vêm as métricas</h2>
+          <p>
+            Os fatores iniciais de combustível usam valores de referência de combustão
+            compatíveis com bases públicas como EPA, IPCC e GHG Protocol. No MVP, eles foram
+            cadastrados como premissas editáveis: gasolina 2,31 kg CO₂e/L, etanol 1,53 kg
+            CO₂e/L e diesel 2,68 kg CO₂e/L.
+          </p>
+          <p>
+            As premissas operacionais também são editáveis no painel admin. Hoje o sistema usa
+            3 min de fila e 20 s de cabine para pedágio, 2 min de fila e 15 s para
+            estacionamento, além de estimativas de marcha lenta, aceleração e ticket em papel.
+            Esses números servem para demonstração e não substituem um inventário oficial de
+            emissões.
+          </p>
+          <p>
+            Referências: <a href="https://www.epa.gov/energy/greenhouse-gas-equivalencies-calculator-calculations-and-references" target="_blank" rel="noopener">EPA</a>,
+            <a href="https://www.ipcc-nggip.iges.or.jp/public/2006gl/vol2.html" target="_blank" rel="noopener">IPCC 2006</a> e
+            <a href="https://ghgprotocol.org/calculation-tools" target="_blank" rel="noopener">GHG Protocol</a>.
           </p>
         </div>
       </article>

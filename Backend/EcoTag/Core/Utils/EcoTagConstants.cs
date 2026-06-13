@@ -26,8 +26,8 @@ namespace EcoTag.Core.Utils
         [
             ("Iniciante Verde", 1),
             ("Motorista Consciente", 5),
-            ("Guardiao do Ar", 10),
-            ("Referencia Sustentavel", 25)
+            ("Guardião do Ar", 10),
+            ("Referência Sustentável", 25)
         ];
     }
 }

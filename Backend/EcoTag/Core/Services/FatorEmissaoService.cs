@@ -103,6 +103,11 @@ namespace EcoTag.Core.Services
                 return false;
             }
 
+            if (EcoTagConstants.TiposCombustivel.Contains(tipo))
+            {
+                throw new InvalidOperationException("Fatores de emissao padrao nao podem ser excluidos. Edite os valores quando precisar ajustar as metricas.");
+            }
+
             var inUse = await _context.Veiculos
                 .AnyAsync(item => item.TipoCombustivel == tipo);
 

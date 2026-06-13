@@ -26,6 +26,7 @@ namespace EcoTag.Core.Mappers
             {
                 Id = veiculo.Id,
                 UsuarioId = veiculo.UsuarioId,
+                Nome = veiculo.Nome,
                 TipoVeiculo = veiculo.TipoVeiculo,
                 TipoCombustivel = veiculo.TipoCombustivel
             };
@@ -37,6 +38,7 @@ namespace EcoTag.Core.Mappers
             {
                 Id = passagem.Id,
                 VeiculoId = passagem.VeiculoId,
+                VeiculoNome = passagem.Veiculo?.Nome ?? string.Empty,
                 TipoVeiculo = passagem.Veiculo?.TipoVeiculo ?? string.Empty,
                 TipoCombustivel = passagem.Veiculo?.TipoCombustivel ?? string.Empty,
                 LocalUsoId = passagem.LocalUsoId,

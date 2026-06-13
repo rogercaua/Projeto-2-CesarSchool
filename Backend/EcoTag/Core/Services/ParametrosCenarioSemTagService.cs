@@ -106,6 +106,11 @@ namespace EcoTag.Core.Services
                 return false;
             }
 
+            if (EcoTagConstants.TiposLocal.Contains(tipo))
+            {
+                throw new InvalidOperationException("Parametros padrao de cenario sem tag nao podem ser excluidos. Edite os valores quando precisar ajustar as metricas.");
+            }
+
             var inUse = await _context.LocaisUso
                 .AnyAsync(item => item.TipoLocal == tipo);
 

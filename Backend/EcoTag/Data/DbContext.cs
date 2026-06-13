@@ -123,6 +123,7 @@ namespace EcoTag.Data
 
             modelBuilder.Entity<VeiculoModel>(entity =>
             {
+                entity.Property(veiculo => veiculo.Nome).HasMaxLength(100).IsRequired();
                 entity.Property(veiculo => veiculo.TipoVeiculo).HasMaxLength(30).IsRequired();
                 entity.Property(veiculo => veiculo.TipoCombustivel).HasMaxLength(30).IsRequired();
 

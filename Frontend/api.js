@@ -29,7 +29,7 @@ function salvarSessao(authResponse) {
   const user = authResponse?.user || null;
 
   if (!token) {
-    throw new Error("Token de acesso nao recebido.");
+    throw new Error("Token de acesso não recebido.");
   }
 
   localStorage.setItem(TOKEN_KEY, token);
@@ -88,7 +88,7 @@ async function apiRequest(path, options = {}) {
   }
 
   if (!response.ok) {
-    const message = data?.message || data || "Nao foi possivel concluir a acao.";
+    const message = data?.message || data || "Não foi possível concluir a ação.";
     const error = new Error(message);
     error.status = response.status;
     throw error;
@@ -139,17 +139,17 @@ async function listarVeiculos() {
   return apiRequest("/api/veiculos");
 }
 
-async function adicionarVeiculo(tipoVeiculo, tipoCombustivel) {
+async function adicionarVeiculo(nome, tipoVeiculo, tipoCombustivel) {
   return apiRequest("/api/veiculos", {
     method: "POST",
-    body: { tipoVeiculo, tipoCombustivel },
+    body: { nome, tipoVeiculo, tipoCombustivel },
   });
 }
 
-async function atualizarVeiculo(id, tipoVeiculo, tipoCombustivel) {
+async function atualizarVeiculo(id, nome, tipoVeiculo, tipoCombustivel) {
   return apiRequest(`/api/veiculos/${id}`, {
     method: "PUT",
-    body: { tipoVeiculo, tipoCombustivel },
+    body: { nome, tipoVeiculo, tipoCombustivel },
   });
 }
 
@@ -195,6 +195,23 @@ async function getRanking(periodo = "mensal", limit = 10) {
 
 async function adminListarLocais() {
   return apiRequest("/api/admin/locais-uso");
+}
+
+async function adminListarUsuarios() {
+  return apiRequest("/api/admin/users");
+}
+
+async function adminAtualizarUsuario(id, nome, email) {
+  return apiRequest(`/api/admin/users/${id}`, {
+    method: "PUT",
+    body: { nome, email },
+  });
+}
+
+async function adminExcluirUsuario(id) {
+  return apiRequest(`/api/admin/users/${id}`, {
+    method: "DELETE",
+  });
 }
 
 async function adminCriarLocal(nome, tipoLocal) {

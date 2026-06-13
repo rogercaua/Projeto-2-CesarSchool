@@ -6,6 +6,8 @@ namespace EcoTag.Core.DTOs.Passagens
 
         public int VeiculoId { get; set; }
 
+        public string VeiculoNome { get; set; } = string.Empty;
+
         public string TipoVeiculo { get; set; } = string.Empty;
 
         public string TipoCombustivel { get; set; } = string.Empty;

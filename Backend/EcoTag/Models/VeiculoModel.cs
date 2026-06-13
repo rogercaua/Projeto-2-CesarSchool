@@ -10,6 +10,10 @@ namespace EcoTag.Models
         public int UsuarioId { get; set; }
 
         [Required]
+        [MaxLength(100)]
+        public string Nome { get; set; } = string.Empty;
+
+        [Required]
         [MaxLength(30)]
         public string TipoVeiculo { get; set; } = string.Empty;
 
