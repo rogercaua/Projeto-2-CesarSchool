@@ -529,7 +529,11 @@ Isso permite testar rapidamente:
 - Gamificacao.
 - Ranking.
 
+<<<<<<< HEAD
 ## Ordem sugerida
+=======
+## Ordem sugerida para demonstracao
+>>>>>>> a3b85f6 (Documenta backend e ajusta Swagger)
 
 1. Abrir `http://localhost:5295/swagger`.
 2. Cadastrar usuario em `POST /api/auth/register`.
@@ -544,7 +548,11 @@ Isso permite testar rapidamente:
 11. Testar simulador em `POST /api/simulador`.
 12. Ver gamificacao em `GET /api/gamificacao/me`.
 13. Ver ranking em `GET /api/ranking?periodo=mensal&limit=10`.
+<<<<<<< HEAD
 14. Rotas admin
+=======
+14. Explicar rotas admin e premissas ambientais editaveis.
+>>>>>>> a3b85f6 (Documenta backend e ajusta Swagger)
 
 ## CORS
 
@@ -584,9 +592,27 @@ Em producao, o ideal e configurar via variaveis de ambiente:
 - `Jwt__Issuer`
 - `Jwt__Audience`
 
+<<<<<<< HEAD
+=======
+Nao e recomendado versionar senhas reais de banco ou chaves JWT reais.
+
+>>>>>>> a3b85f6 (Documenta backend e ajusta Swagger)
 ## Arquivos complementares
 
 - `Backend/EcoTag/DOCUMENTACAO_BACKEND.txt`: documentacao detalhada das rotas, requests, responses e retornos HTTP.
 - `Backend/EcoTag/POSTGRESQL_SETUP.md`: guia rapido de configuracao local do PostgreSQL.
 - `UML.png`: diagrama de classes.
 - `DER.png`: diagrama entidade-relacionamento.
+<<<<<<< HEAD
+=======
+
+## Pontos fortes para apresentar
+
+- Separacao clara entre controllers, services, DTOs, models e banco.
+- JWT protege rotas do usuario.
+- Role `admin` protege rotas sensiveis de configuracao ambiental.
+- CO2e evitado e calculado no backend, evitando manipulacao pelo cliente.
+- Simulador nao altera historico.
+- Dashboard, gamificacao e ranking usam passagens reais.
+- Premissas ambientais podem ser alteradas por admin sem mudar codigo-fonte.
+>>>>>>> a3b85f6 (Documenta backend e ajusta Swagger)
